@@ -1,0 +1,20 @@
+// Get all users
+GET http://localhost:4004/api/v1/users
+
+###
+
+// Not found
+GET http://localhost:4004/api/v1/users/871fdd27-d4bf-4d51-9c22-958a32e6ff53
+
+###
+
+// Create user
+POST http://localhost:4004/api/v1/users/signup
+Content-Type: application/application/json
+
+{
+    "username": "test",
+    "password": "initial1",
+    "confirmPassword": "initial1",
+    "email": "testemail@example.com"
+}

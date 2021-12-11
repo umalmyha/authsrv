@@ -1,0 +1,15 @@
+services:
+  db:
+    container_name: authsrvdb
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_USER=${AUTHSRV_DB_USERNAME}
+      - POSTGRES_PASSWORD=${AUTHSRV_DB_PASSWORD}
+      - POSTGRES_DB=${AUTHSRV_DB_DBNAME}
+    ports:
+      - '5432:5432'
+    volumes:
+      - authsrvdata:/var/lib/postgresql/data
+
+volumes:
+  authsrvdata:
