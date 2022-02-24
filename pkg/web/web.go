@@ -25,9 +25,9 @@ func WithDefaultErrorHandler(fn httpHandlerFuncWithErr) http.HandlerFunc {
 
 func defaultErrorHandler(w http.ResponseWriter, err error) {
 	switch err.(type) {
-	case *ValidationError:
+	case *RequestErr:
 		RespondJson(w, http.StatusBadRequest, err)
-	case *NotFoundError:
+	case *NotFoundErr:
 		RespondStatus(w, http.StatusNotFound)
 	default:
 		RespondStatus(w, http.StatusInternalServerError)

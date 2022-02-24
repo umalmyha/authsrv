@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -9,11 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
-	"github.com/pkg/errors"
-	"github.com/umalmyha/authsrv/internal/dbg"
-	"github.com/umalmyha/authsrv/internal/user"
-	userStore "github.com/umalmyha/authsrv/internal/user/store"
-	"github.com/umalmyha/authsrv/pkg/database"
+	"github.com/umalmyha/authsrv/internal/handler"
+	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/pkg/database/rdb"
 	"github.com/umalmyha/authsrv/pkg/server"
 	"github.com/umalmyha/authsrv/pkg/web"
 	"go.uber.org/zap"
@@ -36,7 +36,7 @@ func start(logger *zap.SugaredLogger) error {
 	// load environment variables
 	err := loadEnv()
 	if err != nil {
-		return errors.Wrap(err, "loading environment variables")
+		return errors.New(fmt.Sprintf("Error while loading environment variables: %s", err.Error()))
 	}
 
 	// init db
@@ -76,23 +76,23 @@ func loadEnv() error {
 }
 
 func connectToDb() (*sqlx.DB, error) {
-	dbConfig := database.NewConfig(
-		database.DatabasePostgres,
-		database.WithUser(os.Getenv("AUTHSRV_DB_USERNAME")),
-		database.WithPassword(os.Getenv("AUTHSRV_DB_PASSWORD")),
-		database.WithDatabase(os.Getenv("AUTHSRV_DB_DBNAME")),
-		database.WithHost(os.Getenv("AUTHSRV_DB_HOST")),
-		database.WithParams(
-			database.Param("sslmode", "disable"),
+	dbConfig := rdb.NewConfig(
+		rdb.DatabasePostgres,
+		rdb.WithUser(os.Getenv("AUTHSRV_DB_USERNAME")),
+		rdb.WithPassword(os.Getenv("AUTHSRV_DB_PASSWORD")),
+		rdb.WithDatabase(os.Getenv("AUTHSRV_DB_DBNAME")),
+		rdb.WithHost(os.Getenv("AUTHSRV_DB_HOST")),
+		rdb.WithParams(
+			rdb.Param("sslmode", "disable"),
 		),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := database.Connect(ctx, dbConfig)
+	db, err := rdb.Connect(ctx, dbConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "database connection")
+		return nil, errors.New(fmt.Sprintf("database connection error: %s", err.Error()))
 	}
 
 	return db, nil
@@ -111,7 +111,7 @@ func startServer(db *sqlx.DB, logger *zap.SugaredLogger) error {
 	srv := server.New(srvCfg)
 
 	if err := srv.ListenAndServe(); err != nil {
-		return errors.Wrap(err, "server startup error")
+		return errors.New(fmt.Sprintf("server startup error: %s", err.Error()))
 	}
 
 	return nil
@@ -120,17 +120,17 @@ func startServer(db *sqlx.DB, logger *zap.SugaredLogger) error {
 func handlerV1(db *sqlx.DB, logger *zap.SugaredLogger) *chi.Mux {
 	r := chi.NewRouter()
 
-	userHandler := user.Handler(user.Service(logger, userStore.NewStore(db)))
+	userHandler := handler.NewUserHandler(service.NewUserService(db))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/users", func(r chi.Router) {
 			r.Post("/signup", web.WithDefaultErrorHandler(userHandler.Signup))
-			r.Get("/", web.WithDefaultErrorHandler(userHandler.GetAll))
-			r.Get("/{id}", web.WithDefaultErrorHandler(userHandler.Get))
-			r.Patch("/{id}", web.WithDefaultErrorHandler(userHandler.Update))
-			r.Put("/{id}", web.WithDefaultErrorHandler(userHandler.Update))
-			r.Delete("/{id}", web.WithDefaultErrorHandler(userHandler.Delete))
 		})
+
+		// r.Route("/roles", func(r chi.Router) {
+		// 	r.Get("/", web.WithDefaultErrorHandler(scopeHandler.GetAll))
+		// 	r.Post("/", web.WithDefaultErrorHandler(scopeHandler.Create))
+		// })
 	})
 
 	return r
@@ -140,7 +140,7 @@ func debugHandlerV1(db *sqlx.DB, logger *zap.SugaredLogger) *chi.Mux {
 	// TODO: Add additional routes
 	r := chi.NewRouter()
 
-	dbgHandler := dbg.Handler()
+	dbgHandler := handler.NewDebugHandler()
 	r.Get("/healthcheck", dbgHandler.Healthcheck)
 
 	return r

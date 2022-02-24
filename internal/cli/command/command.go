@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/umalmyha/authsrv/pkg/database"
+	"github.com/umalmyha/authsrv/pkg/database/rdb"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Executor interface {
@@ -16,21 +17,21 @@ type Executor interface {
 }
 
 func connectToDb() (*sqlx.DB, error) {
-	dbConfig := database.NewConfig(
-		database.DatabasePostgres,
-		database.WithUser(os.Getenv("AUTHSRV_DB_USERNAME")),
-		database.WithPassword(os.Getenv("AUTHSRV_DB_PASSWORD")),
-		database.WithDatabase(os.Getenv("AUTHSRV_DB_DBNAME")),
-		database.WithHost(os.Getenv("AUTHSRV_DB_HOST")),
-		database.WithParams(
-			database.Param("sslmode", "disable"),
+	dbConfig := rdb.NewConfig(
+		rdb.DatabasePostgres,
+		rdb.WithUser(os.Getenv("AUTHSRV_DB_USERNAME")),
+		rdb.WithPassword(os.Getenv("AUTHSRV_DB_PASSWORD")),
+		rdb.WithDatabase(os.Getenv("AUTHSRV_DB_DBNAME")),
+		rdb.WithHost(os.Getenv("AUTHSRV_DB_HOST")),
+		rdb.WithParams(
+			rdb.Param("sslmode", "disable"),
 		),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := database.Connect(ctx, dbConfig)
+	db, err := rdb.Connect(ctx, dbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,12 @@ func connectToDb() (*sqlx.DB, error) {
 }
 
 func newZapLogger() (*zap.SugaredLogger, error) {
-	config := zap.NewDevelopmentConfig()
+	config := zap.NewProductionConfig()
+	config.DisableCaller = true
+	config.DisableStacktrace = true
+	config.Encoding = "console"
+	config.EncoderConfig.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {}
+	config.EncoderConfig.EncodeLevel = func(l zapcore.Level, pae zapcore.PrimitiveArrayEncoder) {}
 	logger, err := config.Build()
 	if err != nil {
 		return nil, err

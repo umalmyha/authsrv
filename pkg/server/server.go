@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"fmt"
 	"log"
@@ -11,8 +12,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type server struct {
@@ -66,7 +65,7 @@ func (s *server) ListenAndServe() error {
 	select {
 	case err := <-errorsCh:
 		s.debugServer.Close()
-		return errors.Wrap(err, "server runtime error")
+		return errors.New(fmt.Sprintf("server runtime error: %s", err.Error()))
 
 	case sig := <-shutdownCh:
 		s.logger.Printf("%s shutdown signal has been sent", sig)
@@ -82,7 +81,7 @@ func (s *server) handleShutdown() error {
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		s.httpServer.Close()
-		return errors.Errorf("failed to stop server gracefully: %w", err)
+		return errors.New(fmt.Sprintf("failed to stop server gracefully: %s", err.Error()))
 	}
 
 	s.logger.Print("server has been stopped gracefully")

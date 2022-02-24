@@ -10,6 +10,7 @@ func NewHelpCommand() Executor {
 	return &helpCommand{
 		execs: []Executor{
 			&createUserCommand{},
+			&genKeysCommand{},
 		},
 	}
 }
@@ -20,8 +21,9 @@ func (c *helpCommand) Run() error {
 }
 
 func (c *helpCommand) Help() {
-	fmt.Println("Auth server CLI tool")
+	fmt.Println("--- Auth server CLI tool ---")
 	fmt.Println("Available commands:")
+	fmt.Println()
 	for _, exec := range c.execs {
 		exec.Help()
 		fmt.Println()

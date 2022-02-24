@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+type ResposeWriterFn func(w http.ResponseWriter) error
+
 func RespondJson(w http.ResponseWriter, statusCode int, data interface{}) error {
 	response, err := json.Marshal(data)
 	if err != nil {

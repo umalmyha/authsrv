@@ -26,6 +26,8 @@ func run() error {
 	switch args.At(0) {
 	case "createuser":
 		cmd = command.NewCreateUserCommand(args)
+	case "genkeys":
+		cmd = command.NewGenKeysCommand(args)
 	default:
 		cmd = command.NewHelpCommand()
 	}

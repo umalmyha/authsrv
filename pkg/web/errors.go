@@ -5,39 +5,44 @@ import (
 	"strings"
 )
 
-type ValidationError struct {
-	Err      string              `json:"error"`
-	Messages []ValidationMessage `json:"messages"`
+type RequestErrMessage struct {
+	Message string `json:"message"`
+	Target  string `json:"target"`
 }
 
-func NewValidationError(messages ...ValidationMessage) error {
-	return &ValidationError{
-		Err:      "Validation failed",
+func NewRequestErrMessage(msg string, target string) RequestErrMessage {
+	return RequestErrMessage{
+		Message: msg,
+		Target:  target,
+	}
+}
+
+type RequestErr struct {
+	Messages []RequestErrMessage `json:"messages"`
+}
+
+func NewRequestErr(messages ...RequestErrMessage) error {
+	return &RequestErr{
 		Messages: messages,
 	}
 }
 
-func (e *ValidationError) Error() string {
+func (e *RequestErr) Error() string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%s .", e.Err))
 
 	for _, msg := range e.Messages {
-		b.WriteString(fmt.Sprintf("%s .", msg.Message))
+		b.WriteString(fmt.Sprintf("%s. ", msg.Message))
 	}
 
 	return b.String()
 }
 
-type NotFoundError struct {
-	Err string
-}
+type NotFoundErr struct{}
 
 func NewNotFoundError(msg string) error {
-	return &NotFoundError{
-		Err: msg,
-	}
+	return &NotFoundErr{}
 }
 
-func (e *NotFoundError) Error() string {
-	return e.Err
+func (e *NotFoundErr) Error() string {
+	return "Not Found"
 }

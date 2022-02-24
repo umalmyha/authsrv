@@ -28,7 +28,6 @@ func (i *simpleInput) Read() (string, error) {
 		if err := scanner.Err(); err != nil {
 			return "", err
 		}
-		fmt.Println()
 
 		if ok, value := okValue(scanner.Text(), i.cfg.Default, i.cfg.IsMandatory); ok {
 			input = value

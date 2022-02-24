@@ -18,3 +18,17 @@ Content-Type: application/application/json
     "confirmPassword": "initial1",
     "email": "testemail@example.com"
 }
+
+###
+
+// Delete user
+DELETE http://localhost:4004/api/v1/users/1167371e-c7c3-4b44-b40e-d85840a443b3
+
+###
+
+PATCH http://localhost:4004/api/v1/users/c6629b8a-a158-4d65-891e-b22b03ab284b
+Content-Type: application/application/json
+
+{
+    "email": "updated.email@example.com"
+}

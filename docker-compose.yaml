@@ -11,5 +11,16 @@ services:
     volumes:
       - authsrvdata:/var/lib/postgresql/data
 
+  cache:
+    container_name: authsrvcache
+    image: 'redis:latest'
+    environment:
+      - password=${AUTHSRV_CACHE_PASSWORD}
+    ports:
+      - '6379:6379'
+    volumes:
+      - cachedata:/data
+
 volumes:
   authsrvdata:
+  cachedata:
