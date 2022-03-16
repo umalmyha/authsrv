@@ -57,18 +57,18 @@ func (dao *RoleDao) Update(ctx context.Context, role RoleDto) error {
 	return nil
 }
 
-type AssignedScopeDao struct {
+type ScopeAssignmentDao struct {
 	ec sqlx.ExtContext
 }
 
-func NewAssignedScopeDao(ec sqlx.ExtContext) *AssignedScopeDao {
-	return &AssignedScopeDao{
+func NewScopeAssignmentDao(ec sqlx.ExtContext) *ScopeAssignmentDao {
+	return &ScopeAssignmentDao{
 		ec: ec,
 	}
 }
 
-func (dao *AssignedScopeDao) CreateMulti(ctx context.Context, scopes []AssignedScopeDto) error {
-	applier := func(scope AssignedScopeDto) []any {
+func (dao *ScopeAssignmentDao) CreateMulti(ctx context.Context, scopes []ScopeAssignmentDto) error {
+	applier := func(scope ScopeAssignmentDto) []any {
 		return []any{scope.RoleId, scope.ScopeId}
 	}
 
@@ -84,7 +84,7 @@ func (dao *AssignedScopeDao) CreateMulti(ctx context.Context, scopes []AssignedS
 	return nil
 }
 
-func (dao *AssignedScopeDao) DeleteByRoleIdAndScopeIdsIn(ctx context.Context, roleId string, scopeIds []string) error {
+func (dao *ScopeAssignmentDao) DeleteByRoleIdAndScopeIdsIn(ctx context.Context, roleId string, scopeIds []string) error {
 	inRange, params, err := rdb.WhereIn(scopeIds)
 	if err != nil {
 		return err

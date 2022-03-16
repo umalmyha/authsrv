@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// TODO: Think of pool logic
 func Connect(opts *redis.Options) (*redis.Client, error) {
 	client := redis.NewClient(opts)
 

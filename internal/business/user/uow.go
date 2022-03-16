@@ -3,28 +3,36 @@ package user
 import (
 	"context"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
+	"github.com/umalmyha/authsrv/internal/business/refresh"
+	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 	"github.com/umalmyha/authsrv/pkg/helpers"
 	"github.com/umalmyha/authsrv/pkg/uow"
 )
 
 type unitOfWork struct {
-	db            *sqlx.DB
+	*uow.SqlxUnitOfWork
+	rdb           *redis.Client
 	users         *uow.ChangeSet[UserDto]
-	assignedRoles *uow.ChangeSet[AssignedRoleDto]
+	assignedRoles *uow.ChangeSet[RoleAssignmentDto]
+	tokens        *uow.ChangeSet[refresh.RefreshTokenDto]
 }
 
-func NewUnitOfWork(db *sqlx.DB) *unitOfWork {
+func NewUnitOfWork(db *sqlx.DB, rdb *redis.Client) *unitOfWork {
 	return &unitOfWork{
-		db:            db,
-		users:         uow.NewChangeSet[UserDto](),
-		assignedRoles: uow.NewChangeSet[AssignedRoleDto](),
+		SqlxUnitOfWork: uow.NewSqlxUnitOfWork(db),
+		rdb:            rdb,
+		users:          uow.NewChangeSet[UserDto](),
+		assignedRoles:  uow.NewChangeSet[RoleAssignmentDto](),
+		tokens:         uow.NewChangeSet[refresh.RefreshTokenDto](),
 	}
 }
 
 func (uow *unitOfWork) RegisterClean(user *User) error {
 	uow.users.Attach(user.ToDto())
 	uow.assignedRoles.AttachRange(user.RolesDto()...)
+	uow.tokens.AttachRange(user.TokensDto()...)
 	return nil
 }
 
@@ -36,6 +44,11 @@ func (uow *unitOfWork) RegisterNew(user *User) error {
 	if err := uow.assignedRoles.AddRange(user.RolesDto()...); err != nil {
 		return err
 	}
+
+	if err := uow.tokens.AddRange(user.TokensDto()...); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -47,6 +60,11 @@ func (uow *unitOfWork) RegisterDeleted(user *User) error {
 	if err := uow.assignedRoles.RemoveRange(user.RolesDto()...); err != nil {
 		return err
 	}
+
+	if err := uow.tokens.RemoveRange(user.TokensDto()...); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -56,15 +74,27 @@ func (uow *unitOfWork) RegisterAmended(user *User) error {
 		return err
 	}
 
-	created, _, deleted := uow.assignedRoles.DeltaWithMatched(user.RolesDto(), func(role AssignedRoleDto) bool {
+	createdRoles, _, deletedRoles := uow.assignedRoles.DeltaWithMatched(user.RolesDto(), func(role RoleAssignmentDto) bool {
 		return role.UserId == userDto.Id
 	})
 
-	if err := uow.assignedRoles.AddRange(created...); err != nil {
+	if err := uow.assignedRoles.AddRange(createdRoles...); err != nil {
 		return err
 	}
 
-	if err := uow.assignedRoles.RemoveRange(deleted...); err != nil {
+	if err := uow.assignedRoles.RemoveRange(deletedRoles...); err != nil {
+		return err
+	}
+
+	createdTokens, _, deletedTokens := uow.tokens.DeltaWithMatched(user.TokensDto(), func(token refresh.RefreshTokenDto) bool {
+		return token.UserId == userDto.Id
+	})
+
+	if err := uow.tokens.AddRange(createdTokens...); err != nil {
+		return err
+	}
+
+	if err := uow.tokens.RemoveRange(deletedTokens...); err != nil {
 		return err
 	}
 
@@ -72,22 +102,28 @@ func (uow *unitOfWork) RegisterAmended(user *User) error {
 }
 
 func (uow *unitOfWork) Flush(ctx context.Context) error {
-	tx, err := uow.db.BeginTxx(ctx, nil)
+	tx, err := uow.Tx(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	userDao := NewUserDao(tx)
-	roleDao := NewAssignedRoleDao(tx)
+	roleDao := NewRoleAssignmentDao(tx)
+	tokenDao := refresh.NewRefreshTokenDao(uow.rdb)
+
+	userTokens, err := uow.usersEncodedTokens()
+	if err != nil {
+		return err
+	}
 
 	if rmRoles := uow.assignedRoles.Deleted(); len(rmRoles) > 0 {
-		rolesGroup := helpers.GroupBy(rmRoles, func(role AssignedRoleDto, _ int, _ []AssignedRoleDto) (string, string) {
-			return role.UserId, role.UserId
+		rolesGroups := helpers.GroupBy(rmRoles, func(role RoleAssignmentDto, _ int, _ []RoleAssignmentDto) (string, string) {
+			return role.UserId, role.RoleId
 		})
 
-		for userId, rolesId := range rolesGroup {
-			if err := roleDao.DeleteByUserIdAndRoleIdsIn(ctx, userId, rolesId); err != nil {
+		for userId, rolesIds := range rolesGroups {
+			if err := roleDao.DeleteByUserIdAndRoleIdsIn(ctx, userId, rolesIds); err != nil {
 				return err
 			}
 		}
@@ -122,14 +158,49 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 		}
 	}
 
+	if len(userTokens) > 0 {
+		userIds := helpers.Keys(userTokens)
+		pipeline := tokenDao.WithinTxWithAttempts(ctx, userIds, func(pipe redis.Pipeliner) error {
+			for userId, encodedToken := range userTokens {
+				if err := pipe.Set(ctx, userId, encodedToken, 0).Err(); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+
+		if err := pipeline(3); err != nil {
+			return err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return nil
+	return uow.Dispose()
 }
 
 func (uow *unitOfWork) Dispose() error {
 	uow.users.Cleanup()
 	uow.assignedRoles.Cleanup()
+	uow.tokens.Cleanup()
 	return nil
+}
+
+func (uow *unitOfWork) usersEncodedTokens() (map[string]string, error) {
+	userTokensEncoded := make(map[string]string)
+	if tokens := uow.tokens.All(); len(tokens) > 0 {
+		userTokens := helpers.GroupBy(tokens, func(token refresh.RefreshTokenDto, _ int, _ []refresh.RefreshTokenDto) (string, refresh.RefreshTokenDto) {
+			return token.UserId, token
+		})
+
+		for userId, tokens := range userTokens {
+			encodedToken, err := dbredis.EncodeGob(tokens)
+			if err != nil {
+				return nil, err
+			}
+			userTokensEncoded[userId] = string(encodedToken)
+		}
+	}
+	return userTokensEncoded, nil
 }

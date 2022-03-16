@@ -6,15 +6,16 @@ import (
 	"container/list"
 
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
+	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
 type scopeExistFn func(string) (bool, error)
 
 type Role struct {
-	id             string
-	name           valueobj.SolidString
-	description    valueobj.NilString
-	assignedScopes *list.List
+	id          string
+	name        valueobj.SolidString
+	description valueobj.NilString
+	scopes      *list.List
 }
 
 func (r *Role) ChangeDescription(descr string) {
@@ -22,14 +23,14 @@ func (r *Role) ChangeDescription(descr string) {
 }
 
 func (r *Role) AssignScope(scopeId string, existFn scopeExistFn) error {
-	scopeToAssign, err := valueobj.NewAssignedScope(r.id, scopeId)
+	scopeIdent, err := valueobj.NewScopeId(scopeId)
 	if err != nil {
 		return err
 	}
 
-	for elem := r.assignedScopes.Front(); elem != nil; elem = elem.Next() {
-		scope, _ := elem.Value.(valueobj.AssignedScope)
-		if scope.IsTheSameAs(scopeToAssign) {
+	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
+		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
+		if assignedScopeId.IsTheSameAs(scopeIdent) {
 			return fmt.Errorf("scope with id %s is already assigned", scopeId)
 		}
 	}
@@ -40,20 +41,20 @@ func (r *Role) AssignScope(scopeId string, existFn scopeExistFn) error {
 		return fmt.Errorf("scope with id %s doesn't exist", scopeId)
 	}
 
-	r.assignedScopes.PushBack(scopeToAssign)
+	r.scopes.PushBack(scopeIdent)
 	return nil
 }
 
 func (r *Role) UnassignScope(scopeId string) error {
-	scopeToUnassign, err := valueobj.NewAssignedScope(r.id, scopeId)
+	scopeIdent, err := valueobj.NewScopeId(scopeId)
 	if err != nil {
 		return err
 	}
 
 	var rmElem *list.Element
-	for elem := r.assignedScopes.Front(); elem != nil; elem = elem.Next() {
-		scope, _ := elem.Value.(valueobj.AssignedScope)
-		if scope.IsTheSameAs(scopeToUnassign) {
+	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
+		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
+		if assignedScopeId.IsTheSameAs(scopeIdent) {
 			rmElem = elem
 			break
 		}
@@ -63,7 +64,7 @@ func (r *Role) UnassignScope(scopeId string) error {
 		return fmt.Errorf("scope with id %s is not assigned", scopeId)
 	}
 
-	r.assignedScopes.Remove(rmElem)
+	r.scopes.Remove(rmElem)
 	return nil
 }
 
@@ -75,14 +76,8 @@ func (r *Role) ToDto() RoleDto {
 	}
 }
 
-func (r *Role) ScopesDto() []AssignedScopeDto {
-	dto := make([]AssignedScopeDto, 0)
-
-	for elem := r.assignedScopes.Front(); elem != nil; elem = elem.Next() {
-		scope, _ := elem.Value.(valueobj.AssignedScope)
-		scopeDto := AssignedScopeDto{RoleId: scope.RoleId(), ScopeId: scope.ScopeId()}
-		dto = append(dto, scopeDto)
-	}
-
-	return dto
+func (r *Role) ScopesDto() []ScopeAssignmentDto {
+	return helpers.FromListWithReducer(r.scopes, func(scopeId valueobj.ScopeId) ScopeAssignmentDto {
+		return ScopeAssignmentDto{RoleId: r.id, ScopeId: scopeId.String()}
+	})
 }

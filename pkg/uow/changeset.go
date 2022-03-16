@@ -151,7 +151,7 @@ func (es *ChangeSet[E]) UpdateRange(entities ...E) error {
 	return nil
 }
 
-func (es *ChangeSet[E]) FindById(entity E) valueReceiver[E] {
+func (es *ChangeSet[E]) FindById(entity E) *valueReceiver[E] {
 	id := entity.Key()
 
 	if entry, found := es.created[id]; found {
@@ -169,7 +169,7 @@ func (es *ChangeSet[E]) FindById(entity E) valueReceiver[E] {
 	return es.emptyReceiver()
 }
 
-func (es *ChangeSet[E]) Find(matcherFn EntityMatcherFn[E]) valueReceiver[E] {
+func (es *ChangeSet[E]) Find(matcherFn EntityMatcherFn[E]) *valueReceiver[E] {
 	if entry, found := es.findMatchedIn(matcherFn, es.created); found {
 		return es.receiverWithValue(entry)
 	}
@@ -265,6 +265,16 @@ func (es *ChangeSet[E]) Deleted() []E {
 	return deleted
 }
 
+func (es *ChangeSet[E]) Clean() []E {
+	clean := make([]E, 0)
+
+	for _, entry := range es.unchanged {
+		clean = append(clean, entry)
+	}
+
+	return clean
+}
+
 func (es *ChangeSet[E]) Delta() ([]E, []E, []E) {
 	return es.Created(), es.Updated(), es.Deleted()
 }
@@ -298,6 +308,16 @@ func (es *ChangeSet[E]) DeltaWithMatched(entities []E, matcherFn EntityMatcherFn
 	return created, updated, deleted
 }
 
+func (es *ChangeSet[E]) All() []E {
+	created := es.Created()
+	updated := es.Updated()
+	clean := es.Clean()
+
+	all := append(created, updated...)
+	all = append(all, clean...)
+	return all
+}
+
 func (es *ChangeSet[E]) Cleanup() {
 	es.unchanged = make(map[string]E)
 	es.created = make(map[string]E)
@@ -305,15 +325,15 @@ func (es *ChangeSet[E]) Cleanup() {
 	es.deleted = make(map[string]E)
 }
 
-func (es *ChangeSet[E]) receiverWithValue(value E) valueReceiver[E] {
-	return valueReceiver[E]{
+func (es *ChangeSet[E]) receiverWithValue(value E) *valueReceiver[E] {
+	return &valueReceiver[E]{
 		value:      value.Clone(),
 		onReceived: es.onValueReceived,
 	}
 }
 
-func (es *ChangeSet[E]) emptyReceiver() valueReceiver[E] {
-	return valueReceiver[E]{
+func (es *ChangeSet[E]) emptyReceiver() *valueReceiver[E] {
+	return &valueReceiver[E]{
 		onReceived: es.onValueReceived,
 	}
 }

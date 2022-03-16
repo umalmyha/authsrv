@@ -13,15 +13,8 @@ type Password struct {
 	hash string
 }
 
-type PasswordConfig struct {
-	Min          int
-	Max          int
-	HasDigit     bool
-	HasUppercase bool
-}
-
 func GeneratePassword(password string, cfg PasswordConfig) (Password, error) {
-	p := Password{}
+	var p Password
 
 	if password == "" {
 		return p, errors.New("can't be empty")
@@ -31,33 +24,37 @@ func GeneratePassword(password string, cfg PasswordConfig) (Password, error) {
 		return p, errors.New("spaces are not allowed")
 	}
 
-	if cfg.Min > cfg.Max {
-		return p, errors.New("minimum length must be less than maximum length")
+	if cfg.max != 0 && len(password) > cfg.max {
+		return p, fmt.Errorf("maximum length is %d characters", cfg.max)
 	}
 
-	if len(password) < cfg.Min {
-		return p, fmt.Errorf("minimum length is %d characters", cfg.Min)
+	if len(password) < cfg.min {
+		return p, fmt.Errorf("minimum length is %d characters", cfg.min)
 	}
 
-	if len(password) > cfg.Max {
-		return p, fmt.Errorf("maximum length is %d characters", cfg.Max)
-	}
-
-	if cfg.HasDigit && !helpers.HasDigit(password) {
+	if cfg.hasDigit && !helpers.HasDigit(password) {
 		return p, errors.New("must contain at least one digit")
 	}
 
-	if cfg.HasUppercase && !helpers.HasUppercase(password) {
+	if cfg.hasUppercase && !helpers.HasUppercase(password) {
 		return p, errors.New("must contain at least one uppercase character")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := GenerateHash([]byte(password))
 	if err != nil {
-		panic(err)
+		return p, err
 	}
-	p.hash = string(hash)
+	p.hash = hash
 
 	return p, nil
+}
+
+func GenerateHash(password []byte) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
 }
 
 func PasswordFromHash(hash string) Password {
@@ -66,4 +63,46 @@ func PasswordFromHash(hash string) Password {
 
 func (p Password) Hash() string {
 	return p.hash
+}
+
+type PasswordConfig struct {
+	min          int
+	max          int
+	hasDigit     bool
+	hasUppercase bool
+}
+
+func NewPasswordConfig(min int, max int, hasDigit bool, hasUppercase bool) (PasswordConfig, error) {
+	var cfg PasswordConfig
+
+	if max < 0 || min < 0 {
+		return cfg, errors.New("minimum and maximum length can't be negative")
+	}
+
+	if max != 0 && min > max {
+		return cfg, errors.New("minimum length must be less than maximum length")
+	}
+
+	return PasswordConfig{
+		min:          min,
+		max:          max,
+		hasDigit:     hasDigit,
+		hasUppercase: hasUppercase,
+	}, nil
+}
+
+func (cfg PasswordConfig) Min() int {
+	return cfg.min
+}
+
+func (cfg PasswordConfig) Max() int {
+	return cfg.max
+}
+
+func (cfg PasswordConfig) HasDigit() bool {
+	return cfg.hasDigit
+}
+
+func (cfg PasswordConfig) HasUppercase() bool {
+	return cfg.hasUppercase
 }

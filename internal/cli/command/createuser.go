@@ -7,6 +7,7 @@ import (
 	"github.com/umalmyha/authsrv/internal/business/user"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
+	"github.com/umalmyha/authsrv/internal/infrastruct"
 	"github.com/umalmyha/authsrv/internal/service"
 )
 
@@ -51,27 +52,41 @@ func (c *createUserCommand) Run() error {
 		}
 	}
 
-	// TODO: Improve creation process later
-	db, err := connectToDb()
+	db, err := infrastruct.ConnectToDb()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	logger, err := newZapLogger()
+	logger, err := infrastruct.NewCliZapLogger()
 	if err != nil {
 		return err
 	}
 	defer logger.Sync()
 
-	srv := service.NewUserService(db)
+	jwtCfg, err := infrastruct.JwtConfig()
+	if err != nil {
+		return err
+	}
+
+	rfrCfg, err := infrastruct.RefreshTokenConfig()
+	if err != nil {
+		return err
+	}
+
+	passCfg, err := infrastruct.PasswordConfig()
+	if err != nil {
+		return err
+	}
+
+	srv := service.NewAuthService(db, jwtCfg, rfrCfg, passCfg)
 	nu := user.NewUserDto{
 		Username:        username,
 		Password:        password,
 		ConfirmPassword: password,
 		IsSuperuser:     false,
 	}
-	if err := srv.CreateUser(context.Background(), nu); err != nil {
+	if err := srv.Signup(context.Background(), nu); err != nil {
 		return err
 	}
 

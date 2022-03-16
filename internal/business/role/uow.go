@@ -9,16 +9,16 @@ import (
 )
 
 type unitOfWork struct {
-	db             *sqlx.DB
+	*uow.SqlxUnitOfWork
 	roles          *uow.ChangeSet[RoleDto]
-	assignedScopes *uow.ChangeSet[AssignedScopeDto]
+	assignedScopes *uow.ChangeSet[ScopeAssignmentDto]
 }
 
 func NewUnitOfWork(db *sqlx.DB) *unitOfWork {
 	return &unitOfWork{
-		db:             db,
+		SqlxUnitOfWork: uow.NewSqlxUnitOfWork(db),
 		roles:          uow.NewChangeSet[RoleDto](),
-		assignedScopes: uow.NewChangeSet[AssignedScopeDto](),
+		assignedScopes: uow.NewChangeSet[ScopeAssignmentDto](),
 	}
 }
 
@@ -59,7 +59,7 @@ func (uow *unitOfWork) RegisterAmended(role *Role) error {
 	}
 
 	scopes := role.ScopesDto()
-	created, _, deleted := uow.assignedScopes.DeltaWithMatched(scopes, func(scopeDto AssignedScopeDto) bool {
+	created, _, deleted := uow.assignedScopes.DeltaWithMatched(scopes, func(scopeDto ScopeAssignmentDto) bool {
 		return scopeDto.RoleId == roleDto.Id
 	})
 
@@ -75,17 +75,17 @@ func (uow *unitOfWork) RegisterAmended(role *Role) error {
 }
 
 func (uow *unitOfWork) Flush(ctx context.Context) error {
-	tx, err := uow.db.BeginTxx(ctx, nil)
+	tx, err := uow.Tx(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	rolesDao := NewRoleDao(tx)
-	scopesDao := NewAssignedScopeDao(tx)
+	scopesDao := NewScopeAssignmentDao(tx)
 
 	if rmScopes := uow.assignedScopes.Deleted(); len(rmScopes) > 0 {
-		scopesGroup := helpers.GroupBy(rmScopes, func(scope AssignedScopeDto, _ int, _ []AssignedScopeDto) (string, string) {
+		scopesGroup := helpers.GroupBy(rmScopes, func(scope ScopeAssignmentDto, _ int, _ []ScopeAssignmentDto) (string, string) {
 			return scope.RoleId, scope.ScopeId
 		})
 
@@ -128,7 +128,7 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return nil
+	return uow.Dispose()
 }
 
 func (uow *unitOfWork) Dispose() error {

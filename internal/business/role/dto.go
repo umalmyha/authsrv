@@ -6,30 +6,30 @@ import (
 	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
-type NewRoleDto struct {
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-}
-
-type AssignedScopeDto struct {
+type ScopeAssignmentDto struct {
 	RoleId  string `db:"role_id"`
 	ScopeId string `db:"scope_id"`
 }
 
-func (dto AssignedScopeDto) Key() string {
+func (dto ScopeAssignmentDto) Key() string {
 	return fmt.Sprintf("%s-%s", dto.RoleId, dto.ScopeId)
 }
 
-func (dto AssignedScopeDto) IsPresent() bool {
+func (dto ScopeAssignmentDto) IsPresent() bool {
 	return dto.RoleId != "" && dto.ScopeId != ""
 }
 
-func (dto AssignedScopeDto) IsTheSameAs(other AssignedScopeDto) bool {
+func (dto ScopeAssignmentDto) IsTheSameAs(other ScopeAssignmentDto) bool {
 	return dto.RoleId == other.RoleId && dto.ScopeId == other.ScopeId
 }
 
-func (dto AssignedScopeDto) Clone() AssignedScopeDto {
+func (dto ScopeAssignmentDto) Clone() ScopeAssignmentDto {
 	return dto
+}
+
+type NewRoleDto struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 }
 
 type RoleDto struct {

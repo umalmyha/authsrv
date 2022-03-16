@@ -2,15 +2,14 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/command"
+	"github.com/umalmyha/authsrv/internal/infrastruct"
 )
 
 func main() {
-	if err := loadEnv(); err != nil {
+	if err := infrastruct.LoadEnv(); err != nil {
 		fmt.Printf("error occured on loading environment variables: %s", err.Error())
 	}
 
@@ -33,11 +32,4 @@ func run() error {
 	}
 
 	return cmd.Run()
-}
-
-func loadEnv() error {
-	if os.Getenv("APP_ENV") != "production" { // TODO: add normal handling later
-		return godotenv.Load()
-	}
-	return nil
 }

@@ -2,7 +2,7 @@ package uow
 
 import "context"
 
-type UnitOfWork[E any] interface {
+type UnitOfWork[E Entitier[E]] interface {
 	RegisterClean(E) error
 	RegisterNew(E) error
 	RegisterAmended(E) error
@@ -18,7 +18,7 @@ type Entitier[E any] interface {
 	Clone() E
 }
 
-type UnitOfWorkRepository[E any] interface {
+type UnitOfWorkRepository[E Entitier[E]] interface {
 	ById(entity E) error
 	Add(entity E) error
 	Update(entity E) error

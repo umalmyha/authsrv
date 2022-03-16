@@ -1,23 +1,32 @@
 package refresh
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/umalmyha/authsrv/internal/errors"
+	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
+	invariant "github.com/umalmyha/authsrv/internal/errors"
 )
 
-func NewRefreshToken(fprint string, createdAt time.Time) (*RefreshToken, error) {
-	validation := errors.NewValidationResult()
+func NewRefreshToken(fgrprint string, issuedAt time.Time, cfg valueobj.RefreshTokenConfig) (*RefreshToken, error) {
+	validation := invariant.NewValidationResult()
 
-	if fprint == "" {
-		validation.Add(errors.NewInvariantViolationError("fingerprint can't be initial", "fingerprint"))
+	if fgrprint == "" {
+		validation.Add(invariant.NewInvariantViolationError("fingerprint is mandatory", "fingerprint"))
 		return nil, validation.Error()
 	}
 
+	if issuedAt.IsZero() {
+		return nil, errors.New("issue date can't be initial")
+	}
+
+	expiresAt := issuedAt.Add(cfg.TimeToLive())
+
 	return &RefreshToken{
 		id:          uuid.NewString(),
-		fingerprint: fprint,
-		createdAt:   createdAt,
+		fingerprint: fgrprint,
+		issuedAt:    issuedAt,
+		expiresAt:   expiresAt,
 	}, nil
 }

@@ -95,18 +95,18 @@ func (dao *UserDao) FindByUsername(ctx context.Context, username string) (UserDt
 	return user, nil
 }
 
-type AssignedRoleDao struct {
+type RoleAssignmentDao struct {
 	ec sqlx.ExtContext
 }
 
-func NewAssignedRoleDao(ec sqlx.ExtContext) *AssignedRoleDao {
-	return &AssignedRoleDao{
+func NewRoleAssignmentDao(ec sqlx.ExtContext) *RoleAssignmentDao {
+	return &RoleAssignmentDao{
 		ec: ec,
 	}
 }
 
-func (dao *AssignedRoleDao) CreateMulti(ctx context.Context, roles []AssignedRoleDto) error {
-	applier := func(role AssignedRoleDto) []any {
+func (dao *RoleAssignmentDao) CreateMulti(ctx context.Context, roles []RoleAssignmentDto) error {
+	applier := func(role RoleAssignmentDto) []any {
 		return []any{role.UserId, role.UserId}
 	}
 
@@ -122,7 +122,7 @@ func (dao *AssignedRoleDao) CreateMulti(ctx context.Context, roles []AssignedRol
 	return nil
 }
 
-func (dao *AssignedRoleDao) DeleteByUserIdAndRoleIdsIn(ctx context.Context, userId string, roleIds []string) error {
+func (dao *RoleAssignmentDao) DeleteByUserIdAndRoleIdsIn(ctx context.Context, userId string, roleIds []string) error {
 	inRange, params, err := rdb.WhereIn(roleIds)
 	if err != nil {
 		return err
@@ -135,4 +135,24 @@ func (dao *AssignedRoleDao) DeleteByUserIdAndRoleIdsIn(ctx context.Context, user
 	}
 
 	return nil
+}
+
+type UserAuthDao struct {
+	ec sqlx.ExtContext
+}
+
+func NewUserAuthDao(ec sqlx.ExtContext) *UserAuthDao {
+	return &UserAuthDao{
+		ec: ec,
+	}
+}
+
+func (dao *UserAuthDao) FindAllForUser(ctx context.Context, userId string) ([]UserAuthDto, error) {
+	userAuth := make([]UserAuthDto, 0)
+	q := "SELECT ROLE_ID, ROLE_NAME, SCOPE_ID, SCOPE_NAME FROM USER_AUTH WHERE USER_ID = $1"
+
+	if err := sqlx.SelectContext(ctx, dao.ec, &userAuth, q, userId); err != nil {
+		return nil, err
+	}
+	return userAuth, nil
 }

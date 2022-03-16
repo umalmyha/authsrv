@@ -1,11 +1,16 @@
 package helpers
 
-import "constraints"
+import (
+	"constraints"
+	"container/list"
+	"errors"
+)
 
 type mapperFn[E any, V any] func(E, int, []E) V
 type reducerFn[E any, V any] func(V, E, int, []E) V
 type matchFn[E any] func(E, int, []E) bool
 type groupKeyFn[E any, V any, K constraints.Ordered] func(E, int, []E) (K, V)
+type fromListReducerFn[E any, R any] func(E) R
 
 func Map[E any, V any](in []E, mapper mapperFn[E, V]) []V {
 	out := make([]V, 0)
@@ -44,4 +49,36 @@ func GroupBy[E any, V any, K constraints.Ordered](in []E, keyGrouper groupKeyFn[
 		}
 	}
 	return groups
+}
+
+func FromList[E any](lst *list.List) []E {
+	var elems = make([]E, 0)
+	for e := lst.Front(); e != nil; e = e.Next() {
+		elem, ok := e.Value.(E)
+		if !ok {
+			panic(errors.New("list elements must have the same type to be converted to slice"))
+		}
+		elems = append(elems, elem)
+	}
+	return elems
+}
+
+func FromListWithReducer[E any, R any](lst *list.List, reducerFn fromListReducerFn[E, R]) []R {
+	var elems = make([]R, 0)
+	for e := lst.Front(); e != nil; e = e.Next() {
+		elem, ok := e.Value.(E)
+		if !ok {
+			panic(errors.New("list elements must have the same type to be converted to slice"))
+		}
+		elems = append(elems, reducerFn(elem))
+	}
+	return elems
+}
+
+func ToList[E any](sl []E) *list.List {
+	lst := list.New()
+	for _, elem := range sl {
+		lst.PushBack(elem)
+	}
+	return lst
 }

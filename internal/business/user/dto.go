@@ -48,24 +48,24 @@ func (dto UserDto) Clone() UserDto {
 	}
 }
 
-type AssignedRoleDto struct {
+type RoleAssignmentDto struct {
 	UserId string `db:"user_id"`
 	RoleId string `db:"role_id"`
 }
 
-func (dto AssignedRoleDto) Key() string {
+func (dto RoleAssignmentDto) Key() string {
 	return fmt.Sprintf("%s-%s", dto.UserId, dto.RoleId)
 }
 
-func (dto AssignedRoleDto) IsPresent() bool {
+func (dto RoleAssignmentDto) IsPresent() bool {
 	return dto.UserId != "" && dto.RoleId != ""
 }
 
-func (dto AssignedRoleDto) IsTheSameAs(other AssignedRoleDto) bool {
+func (dto RoleAssignmentDto) IsTheSameAs(other RoleAssignmentDto) bool {
 	return dto.UserId == other.UserId && dto.RoleId == other.RoleId
 }
 
-func (dto AssignedRoleDto) Clone() AssignedRoleDto {
+func (dto RoleAssignmentDto) Clone() RoleAssignmentDto {
 	return dto
 }
 
@@ -78,4 +78,30 @@ type NewUserDto struct {
 	LastName        *string `json:"lastName"`
 	MiddleName      *string `json:"middleName"`
 	IsSuperuser     bool    `json:"-"`
+}
+
+type UserAuthDto struct {
+	UserId    string `db:"user_id"`
+	RoleId    string `db:"role_id"`
+	RoleName  string `db:"role_name"`
+	ScopeId   string `db:"scope_id"`
+	ScopeName string `db:"scope_name"`
+}
+
+type SigninDto struct {
+	Username    string `json:"user"`
+	Password    string `json:"password"`
+	Fingerprint string `json:"fingerprint"`
+}
+
+type LogoutDto struct {
+	Username       string `json:"user"`
+	Fingerprint    string `json:"fingerprint"`
+	RefreshTokenId string `json:"-"`
+}
+
+type RefreshDto struct {
+	Username       string `json:"user"`
+	Fingerprint    string `json:"fingerprint"`
+	RefreshTokenId string `json:"-"`
 }

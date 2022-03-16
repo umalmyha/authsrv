@@ -40,9 +40,9 @@ func FromNewRoleDto(dto NewRoleDto, existFn isExsitingRoleNameFn) (*Role, error)
 	}
 
 	return &Role{
-		id:             uuid.NewString(),
-		name:           roleName,
-		description:    valueobj.NewNilStringFromPtr(dto.Description),
-		assignedScopes: list.New(),
+		id:          uuid.NewString(),
+		name:        roleName,
+		description: valueobj.NewNilStringFromPtr(dto.Description),
+		scopes:      list.New(),
 	}, nil
 }

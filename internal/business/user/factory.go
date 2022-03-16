@@ -5,13 +5,15 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/umalmyha/authsrv/internal/business/refresh"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
 	"github.com/umalmyha/authsrv/internal/errors"
+	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
 type isExistingUsernameFn func(string) (bool, error)
 
-func FromNewUserDto(dto NewUserDto, existFn isExistingUsernameFn) (*User, error) {
+func FromNewUserDto(dto NewUserDto, cfg valueobj.PasswordConfig, existFn isExistingUsernameFn) (*User, error) {
 	validation := errors.NewValidationResult()
 
 	if dto.Username == "" {
@@ -51,13 +53,12 @@ func FromNewUserDto(dto NewUserDto, existFn isExistingUsernameFn) (*User, error)
 		)
 	}
 
-	cfg := valueobj.PasswordConfig{Min: 4, Max: 15, HasDigit: true, HasUppercase: true}
 	password, err := valueobj.GeneratePassword(dto.Password, cfg)
 	if err != nil {
 		validation.Add(
 			errors.NewInvariantViolationError(
-				fmt.Sprintf("password must has length from %d to %d symbols, has one upper case symbol and has one digit", cfg.Min, cfg.Max),
-				"confirmPassword",
+				fmt.Sprintf(err.Error()),
+				"password",
 			),
 		)
 	}
@@ -67,14 +68,42 @@ func FromNewUserDto(dto NewUserDto, existFn isExistingUsernameFn) (*User, error)
 	}
 
 	return &User{
-		id:            uuid.NewString(),
-		username:      username,
-		email:         email,
-		password:      password,
-		isSuperuser:   dto.IsSuperuser,
-		firstName:     valueobj.NewNilStringFromPtr(dto.FirstName),
-		lastName:      valueobj.NewNilStringFromPtr(dto.LastName),
-		middleName:    valueobj.NewNilStringFromPtr(dto.MiddleName),
-		assignedRoles: list.New(),
+		id:          uuid.NewString(),
+		username:    username,
+		email:       email,
+		password:    password,
+		isSuperuser: dto.IsSuperuser,
+		firstName:   valueobj.NewNilStringFromPtr(dto.FirstName),
+		lastName:    valueobj.NewNilStringFromPtr(dto.LastName),
+		middleName:  valueobj.NewNilStringFromPtr(dto.MiddleName),
+		roles:       list.New(),
+		tokens:      list.New(),
+		auth:        valueobj.NewUserAuth(nil, nil),
+	}, nil
+}
+
+func fromDbDtos(user UserDto, roleIds []valueobj.RoleId, tokens []*refresh.RefreshToken, auth valueobj.UserAuth) (*User, error) {
+	username, err := valueobj.NewSolidString(user.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	email, err := valueobj.NewNilEmailFromPtr(user.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		id:          user.Id,
+		username:    username,
+		email:       email,
+		password:    valueobj.PasswordFromHash(user.Password),
+		isSuperuser: user.IsSuperuser,
+		firstName:   valueobj.NewNilStringFromPtr(user.FirstName),
+		lastName:    valueobj.NewNilStringFromPtr(user.LastName),
+		middleName:  valueobj.NewNilStringFromPtr(user.MiddleName),
+		roles:       helpers.ToList(roleIds),
+		tokens:      helpers.ToList(tokens),
+		auth:        auth,
 	}, nil
 }

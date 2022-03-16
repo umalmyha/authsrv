@@ -1,29 +1,34 @@
 package refresh
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
 
 	"github.com/go-redis/redis/v8"
+	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 )
 
 type RefreshTokenDao struct {
-	client *redis.Client
+	*dbredis.Store
 }
 
-func NewRefreshTokenDao(client *redis.Client) *RefreshTokenDao {
+func NewRefreshTokenDao(rdb *redis.Client) *RefreshTokenDao {
 	return &RefreshTokenDao{
-		client: client,
+		Store: dbredis.NewStore(rdb),
 	}
 }
 
-func (dao *RefreshTokenDao) CreateMultiForUser(ctx context.Context, userId string, tokens []RefreshTokenDto) error {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(tokens); err != nil {
-		return errors.New(fmt.Sprintf("failed to serialize tokens to gob format: %s", err.Error()))
+func (dao *RefreshTokenDao) FindAllForUser(ctx context.Context, userId string) ([]RefreshTokenDto, error) {
+	var tokens []RefreshTokenDto
+
+	tokenStr, err := dao.Client().Get(ctx, userId).Result()
+	if err != nil {
+		return nil, err
 	}
-	return dao.client.Set(ctx, userId, buf, 0).Err()
+
+	if err := dbredis.DecodeGob([]byte(tokenStr), &tokens); err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to deserialize tokens from gob format: %s", err.Error()))
+	}
+	return tokens, nil
 }
