@@ -1,6 +1,6 @@
 package helpers
 
-import "constraints"
+import "golang.org/x/exp/constraints"
 
 func Keys[K constraints.Ordered, V any](m map[K]V) []K {
 	keys := make([]K, len(m))

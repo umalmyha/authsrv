@@ -18,7 +18,7 @@ func (dto RefreshTokenDto) IsPresent() bool {
 	return dto.Id != ""
 }
 
-func (dto RefreshTokenDto) IsTheSameAs(other RefreshTokenDto) bool {
+func (dto RefreshTokenDto) Equal(other RefreshTokenDto) bool {
 	return dto.Id == other.Id &&
 		dto.Fingerprint == other.Fingerprint &&
 		dto.IssuedAt == other.IssuedAt &&

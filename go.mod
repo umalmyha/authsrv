@@ -12,6 +12,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/exp v0.0.0-20220318154914-8dddf5d87bd8
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 

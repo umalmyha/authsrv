@@ -35,7 +35,7 @@ func (u *User) AssignRole(roleId string, existFn roleExistFn) error {
 
 	for elem := u.roles.Front(); elem != nil; elem = elem.Next() {
 		assignedRoleId, _ := elem.Value.(valueobj.RoleId)
-		if assignedRoleId.IsTheSameAs(roleIdent) {
+		if assignedRoleId.Equal(roleIdent) {
 			return fmt.Errorf("role with id %s is already assigned", roleId)
 		}
 	}
@@ -59,7 +59,7 @@ func (u *User) UnassignRole(roleId string) error {
 	var rmElem *list.Element
 	for elem := u.roles.Front(); elem != nil; elem = elem.Next() {
 		assignedRoleId, _ := elem.Value.(valueobj.RoleId)
-		if assignedRoleId.IsTheSameAs(roleIdent) {
+		if assignedRoleId.Equal(roleIdent) {
 			rmElem = elem
 			break
 		}

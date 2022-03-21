@@ -61,8 +61,10 @@ func (es *ChangeSet[E]) Add(entity E) error {
 
 	if entry, found := es.deleted[id]; found {
 		delete(es.deleted, id)
-		if !entity.IsTheSameAs(entry) {
+		if !entity.Equal(entry) {
 			es.updated[id] = entity.Clone()
+		} else {
+			es.unchanged[id] = entity.Clone()
 		}
 		return nil
 	}
@@ -123,19 +125,25 @@ func (es *ChangeSet[E]) Update(entity E) error {
 		return fmt.Errorf("entity with id %s is already removed", id)
 	}
 
-	if entry, found := es.created[id]; found && !entity.IsTheSameAs(entry) {
-		es.created[id] = entity.Clone()
+	if entry, found := es.created[id]; found {
+		if !entity.Equal(entry) {
+			es.created[id] = entity.Clone()
+		}
 		return nil
 	}
 
-	if entry, found := es.updated[id]; found && !entity.IsTheSameAs(entry) {
-		es.updated[id] = entity.Clone()
+	if entry, found := es.updated[id]; found {
+		if !entity.Equal(entry) {
+			es.updated[id] = entity.Clone()
+		}
 		return nil
 	}
 
-	if entry, found := es.unchanged[id]; found && !entity.IsTheSameAs(entry) {
-		delete(es.unchanged, id)
-		es.updated[id] = entity.Clone()
+	if entry, found := es.unchanged[id]; found {
+		if !entity.Equal(entry) {
+			delete(es.unchanged, id)
+			es.updated[id] = entity.Clone()
+		}
 		return nil
 	}
 
@@ -151,7 +159,7 @@ func (es *ChangeSet[E]) UpdateRange(entities ...E) error {
 	return nil
 }
 
-func (es *ChangeSet[E]) FindById(entity E) *valueReceiver[E] {
+func (es *ChangeSet[E]) FindByKey(entity E) *valueReceiver[E] {
 	id := entity.Key()
 
 	if entry, found := es.created[id]; found {
@@ -239,7 +247,7 @@ func (es *ChangeSet[E]) Created() []E {
 	created := make([]E, 0)
 
 	for _, entry := range es.created {
-		created = append(created, entry)
+		created = append(created, entry.Clone())
 	}
 
 	return created
@@ -249,7 +257,7 @@ func (es *ChangeSet[E]) Updated() []E {
 	changed := make([]E, 0)
 
 	for _, entry := range es.updated {
-		changed = append(changed, entry)
+		changed = append(changed, entry.Clone())
 	}
 
 	return changed
@@ -259,7 +267,7 @@ func (es *ChangeSet[E]) Deleted() []E {
 	deleted := make([]E, 0)
 
 	for _, entry := range es.deleted {
-		deleted = append(deleted, entry)
+		deleted = append(deleted, entry.Clone())
 	}
 
 	return deleted
@@ -269,7 +277,7 @@ func (es *ChangeSet[E]) Clean() []E {
 	clean := make([]E, 0)
 
 	for _, entry := range es.unchanged {
-		clean = append(clean, entry)
+		clean = append(clean, entry.Clone())
 	}
 
 	return clean
@@ -292,17 +300,17 @@ func (es *ChangeSet[E]) DeltaWithMatched(entities []E, matcherFn EntityMatcherFn
 
 	for _, entity := range entities {
 		if matchedEntry, found := matchedMap[entity.Key()]; found {
-			if !entity.IsTheSameAs(matchedEntry) {
-				updated = append(updated, entity)
+			if !entity.Equal(matchedEntry) {
+				updated = append(updated, entity.Clone())
 			}
 			delete(matchedMap, entity.Key())
 		} else {
-			created = append(created, entity)
+			created = append(created, entity.Clone())
 		}
 	}
 
 	for _, rmEntry := range matchedMap {
-		deleted = append(deleted, rmEntry)
+		deleted = append(deleted, rmEntry.Clone())
 	}
 
 	return created, updated, deleted

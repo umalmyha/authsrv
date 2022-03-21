@@ -22,6 +22,6 @@ func (r RoleId) String() string {
 	return string(r)
 }
 
-func (r RoleId) IsTheSameAs(other RoleId) bool {
+func (r RoleId) Equal(other RoleId) bool {
 	return r == other
 }

@@ -19,7 +19,7 @@ func (dto ScopeAssignmentDto) IsPresent() bool {
 	return dto.RoleId != "" && dto.ScopeId != ""
 }
 
-func (dto ScopeAssignmentDto) IsTheSameAs(other ScopeAssignmentDto) bool {
+func (dto ScopeAssignmentDto) Equal(other ScopeAssignmentDto) bool {
 	return dto.RoleId == other.RoleId && dto.ScopeId == other.ScopeId
 }
 
@@ -46,7 +46,7 @@ func (dto RoleDto) IsPresent() bool {
 	return dto.Id != ""
 }
 
-func (dto RoleDto) IsTheSameAs(other RoleDto) bool {
+func (dto RoleDto) Equal(other RoleDto) bool {
 	return dto.Name == other.Name && helpers.EqualValues(dto.Description, other.Description)
 }
 

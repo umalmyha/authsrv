@@ -22,6 +22,6 @@ func (s ScopeId) String() string {
 	return string(s)
 }
 
-func (s ScopeId) IsTheSameAs(other ScopeId) bool {
+func (s ScopeId) Equal(other ScopeId) bool {
 	return s == other
 }

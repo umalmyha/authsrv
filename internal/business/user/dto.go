@@ -25,7 +25,7 @@ func (dto UserDto) IsPresent() bool {
 	return dto.Id != ""
 }
 
-func (dto UserDto) IsTheSameAs(other UserDto) bool {
+func (dto UserDto) Equal(other UserDto) bool {
 	return dto.Username == other.Username &&
 		dto.Password == other.Password &&
 		dto.IsSuperuser == other.IsSuperuser &&
@@ -61,7 +61,7 @@ func (dto RoleAssignmentDto) IsPresent() bool {
 	return dto.UserId != "" && dto.RoleId != ""
 }
 
-func (dto RoleAssignmentDto) IsTheSameAs(other RoleAssignmentDto) bool {
+func (dto RoleAssignmentDto) Equal(other RoleAssignmentDto) bool {
 	return dto.UserId == other.UserId && dto.RoleId == other.RoleId
 }
 

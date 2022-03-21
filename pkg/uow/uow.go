@@ -14,7 +14,7 @@ type UnitOfWork[E Entitier[E]] interface {
 type Entitier[E any] interface {
 	Key() string
 	IsPresent() bool
-	IsTheSameAs(E) bool
+	Equal(E) bool
 	Clone() E
 }
 

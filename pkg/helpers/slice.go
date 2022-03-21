@@ -1,9 +1,10 @@
 package helpers
 
 import (
-	"constraints"
 	"container/list"
 	"errors"
+
+	"golang.org/x/exp/constraints"
 )
 
 type mapperFn[E any, V any] func(E, int, []E) V
@@ -56,7 +57,7 @@ func FromList[E any](lst *list.List) []E {
 	for e := lst.Front(); e != nil; e = e.Next() {
 		elem, ok := e.Value.(E)
 		if !ok {
-			panic(errors.New("list elements must have the same type to be converted to slice"))
+			panic(errors.New("list elements must have the same type to be converted to a slice"))
 		}
 		elems = append(elems, elem)
 	}
@@ -68,7 +69,7 @@ func FromListWithReducer[E any, R any](lst *list.List, reducerFn fromListReducer
 	for e := lst.Front(); e != nil; e = e.Next() {
 		elem, ok := e.Value.(E)
 		if !ok {
-			panic(errors.New("list elements must have the same type to be converted to slice"))
+			panic(errors.New("list elements must have the same type to be converted to a slice"))
 		}
 		elems = append(elems, reducerFn(elem))
 	}

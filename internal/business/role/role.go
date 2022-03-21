@@ -30,7 +30,7 @@ func (r *Role) AssignScope(scopeId string, existFn scopeExistFn) error {
 
 	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
 		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
-		if assignedScopeId.IsTheSameAs(scopeIdent) {
+		if assignedScopeId.Equal(scopeIdent) {
 			return fmt.Errorf("scope with id %s is already assigned", scopeId)
 		}
 	}
@@ -54,7 +54,7 @@ func (r *Role) UnassignScope(scopeId string) error {
 	var rmElem *list.Element
 	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
 		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
-		if assignedScopeId.IsTheSameAs(scopeIdent) {
+		if assignedScopeId.Equal(scopeIdent) {
 			rmElem = elem
 			break
 		}

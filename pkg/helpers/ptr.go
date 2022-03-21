@@ -1,6 +1,6 @@
 package helpers
 
-import "constraints"
+import "golang.org/x/exp/constraints"
 
 func EqualValues[V constraints.Ordered](a, b *V) bool {
 	if a != nil && b != nil {

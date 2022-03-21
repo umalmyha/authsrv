@@ -8,14 +8,14 @@ type valueReceiver[E Entitier[E]] struct {
 }
 
 func (vr *valueReceiver[E]) Receive() E {
-	if vr.isValuePresent() {
+	if vr.isValuePresent(vr.value) {
 		vr.onReceived(vr.value)
 	}
 	return vr.value
 }
 
 func (vr *valueReceiver[E]) IfNotPresent(finderFn EntityFinderFn[E]) (E, error) {
-	if vr.isValuePresent() {
+	if vr.isValuePresent(vr.value) {
 		return vr.value, nil
 	}
 
@@ -24,13 +24,15 @@ func (vr *valueReceiver[E]) IfNotPresent(finderFn EntityFinderFn[E]) (E, error) 
 		return value, err
 	}
 
-	vr.onReceived(value)
+	if vr.isValuePresent(value) {
+		vr.onReceived(value)
+	}
 	return value, nil
 }
 
-func (vr *valueReceiver[E]) isValuePresent() bool {
-	if isPtrToNil(vr.value) {
+func (vr *valueReceiver[E]) isValuePresent(v E) bool {
+	if isNilPtr(v) {
 		return false
 	}
-	return vr.value.IsPresent()
+	return v.IsPresent()
 }
