@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -17,7 +16,7 @@ func Connect(opts *redis.Options) (*redis.Client, error) {
 	defer cancel()
 
 	if _, err := client.Ping(ctx).Result(); err != nil {
-		return nil, errors.New(fmt.Sprintf("Error on connection to redis: %s", err.Error()))
+		return nil, fmt.Errorf("Error on connection to redis: %s", err.Error())
 	}
 	return client, nil
 }

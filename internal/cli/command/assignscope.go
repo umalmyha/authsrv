@@ -66,7 +66,14 @@ func (c *assignScopeCommand) Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	return service.NewRoleService(db).AssignScope(ctx, roleName, scopeName)
+	if err := service.NewRoleService(db).AssignScope(ctx, roleName, scopeName); err != nil {
+		return err
+	}
+
+	fmt.Printf("scope '%s' is assigned to role %s successfully", scopeName, roleName)
+	fmt.Println()
+
+	return nil
 }
 
 func (c *assignScopeCommand) Help() {

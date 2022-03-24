@@ -41,7 +41,12 @@ func (repo *Repository) FindById(ctx context.Context, id string) (*Role, error) 
 		return dto.RoleId == role.Id
 	})
 
-	return fromDbDtos(role, assignedScopes)
+	r, err := fromDbDtos(role, assignedScopes)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, repo.uow.RegisterClean(r)
 }
 
 func (repo *Repository) FindByName(ctx context.Context, name string) (*Role, error) {
@@ -64,5 +69,10 @@ func (repo *Repository) FindByName(ctx context.Context, name string) (*Role, err
 		return dto.RoleId == role.Id
 	})
 
-	return fromDbDtos(role, assignedScopes)
+	r, err := fromDbDtos(role, assignedScopes)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, repo.uow.RegisterClean(r)
 }

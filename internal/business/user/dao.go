@@ -107,7 +107,7 @@ func NewRoleAssignmentDao(ec sqlx.ExtContext) *RoleAssignmentDao {
 
 func (dao *RoleAssignmentDao) CreateMulti(ctx context.Context, roles []RoleAssignmentDto) error {
 	applier := func(role RoleAssignmentDto) []any {
-		return []any{role.UserId, role.UserId}
+		return []any{role.UserId, role.RoleId}
 	}
 
 	q, params, err := rdb.BulkInsertQuery("USER_ROLES", []string{"USER_ID", "ROLE_ID"}, roles, applier)

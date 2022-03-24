@@ -25,6 +25,18 @@ func run() error {
 	switch args.At(0) {
 	case "createuser":
 		cmd = command.NewCreateUserCommand(args)
+	case "createscope":
+		cmd = command.NewCreateScopeCommand(args)
+	case "createrole":
+		cmd = command.NewCreateRoleCommand(args)
+	case "assignscope":
+		cmd = command.NewAssignScopeCommand(args)
+	case "unassignscope":
+		cmd = command.NewUnassignScopeCommand(args)
+	case "assignrole":
+		cmd = command.NewAssignRoleCommand(args)
+	case "unassignrole":
+		cmd = command.NewUnassignRoleCommand(args)
 	case "genkeys":
 		cmd = command.NewGenKeysCommand(args)
 	default:

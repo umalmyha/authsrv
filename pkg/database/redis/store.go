@@ -56,7 +56,7 @@ func (s *Store) WithinTxWithAttempts(ctx context.Context, watchKeys []string, pi
 			return nil
 		}
 
-		return errors.New(fmt.Sprintf("failed to finalize the operations within transaction after %d attempts", attempts))
+		return fmt.Errorf("failed to finalize the operations within transaction after %d attempts", attempts)
 	}
 }
 

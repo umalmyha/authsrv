@@ -22,7 +22,7 @@ type unassignRoleCommandOptions struct {
 	help     bool
 }
 
-func NewUnassignRoleCommandCommand(args args.ParsedArgs) Executor {
+func NewUnassignRoleCommand(args args.ParsedArgs) Executor {
 	return &unassignRoleCommand{
 		args: args,
 	}
@@ -58,7 +58,12 @@ func (c *unassignRoleCommand) Run() error {
 	}
 	defer db.Close()
 
-	rdb, err := dbredis.Connect(nil)
+	redisOpts, err := infrastruct.RedisOptions()
+	if err != nil {
+		return err
+	}
+
+	rdb, err := dbredis.Connect(redisOpts)
 	if err != nil {
 		return err
 	}
@@ -72,7 +77,14 @@ func (c *unassignRoleCommand) Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	return service.NewUserService(db, rdb).UnassignRole(ctx, username, roleName)
+	if err := service.NewUserService(db, rdb).UnassignRole(ctx, username, roleName); err != nil {
+		return err
+	}
+
+	fmt.Printf("role '%s' is unassigned from user %s successfully", roleName, username)
+	fmt.Println()
+
+	return nil
 }
 
 func (c *unassignRoleCommand) Help() {

@@ -17,7 +17,7 @@ func NewScopeDao(ec sqlx.ExtContext) *ScopeDao {
 }
 
 func (d *ScopeDao) Create(ctx context.Context, sc ScopeDto) error {
-	q := "INSERT INTO SCOPES(ID, NAME, DESCRIPTION) VALUES($1, $2)"
+	q := "INSERT INTO SCOPES(ID, NAME, DESCRIPTION) VALUES($1, $2, $3)"
 	if _, err := d.ec.ExecContext(ctx, q, sc.Id, sc.Name, sc.Description); err != nil {
 		return err
 	}

@@ -59,26 +59,36 @@ func (repo *Repository) FindByUsername(ctx context.Context, username string) (*U
 		return nil, err
 	}
 
-	return repo.buildUser(user, userAuth, tokens)
+	u, err := repo.buildUser(user, userAuth, tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, repo.uow.RegisterClean(u)
 }
 
 func (repo *Repository) buildUser(user UserDto, userAuthDto []UserAuthDto, tokens []refresh.RefreshTokenDto) (*User, error) {
-	uniqueScopes := make(map[string]bool)
+	uniqueScopeNames := make(map[string]bool)
+	uniqueRolesWithNames := make(map[string]string)
 	roles := make([]string, 0)
 	roleIds := make([]valueobj.RoleId, 0)
 
 	for _, auth := range userAuthDto {
-		uniqueScopes[auth.ScopeName] = true
-		roles = append(roles, auth.RoleName)
+		uniqueScopeNames[auth.ScopeName] = true
+		uniqueRolesWithNames[auth.RoleId] = auth.RoleName
+	}
 
-		roleId, err := valueobj.NewRoleId(auth.RoleId)
+	userAuth := valueobj.NewUserAuth(roles, helpers.Keys(uniqueScopeNames))
+
+	for roleId, roleName := range uniqueRolesWithNames {
+		roles = append(roles, roleName)
+
+		roleIdent, err := valueobj.NewRoleId(roleId)
 		if err != nil {
 			return nil, err
 		}
-		roleIds = append(roleIds, roleId)
+		roleIds = append(roleIds, roleIdent)
 	}
-
-	userAuth := valueobj.NewUserAuth(roles, helpers.Keys(uniqueScopes))
 
 	refreshTokens := helpers.Map(tokens, func(token refresh.RefreshTokenDto, _ int, _ []refresh.RefreshTokenDto) *refresh.RefreshToken {
 		return token.ToRefreshToken()

@@ -60,7 +60,12 @@ func (c *createUserCommand) Run() error {
 	}
 	defer db.Close()
 
-	rdb, err := dbredis.Connect(nil)
+	redisOpts, err := infrastruct.RedisOptions()
+	if err != nil {
+		return err
+	}
+
+	rdb, err := dbredis.Connect(redisOpts)
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,7 @@ type assignRoleCommandOptions struct {
 	help     bool
 }
 
-func NewAssignRoleCommandCommand(args args.ParsedArgs) Executor {
+func NewAssignRoleCommand(args args.ParsedArgs) Executor {
 	return &assignRoleCommand{
 		args: args,
 	}
@@ -58,7 +58,12 @@ func (c *assignRoleCommand) Run() error {
 	}
 	defer db.Close()
 
-	rdb, err := dbredis.Connect(nil)
+	redisOpts, err := infrastruct.RedisOptions()
+	if err != nil {
+		return err
+	}
+
+	rdb, err := dbredis.Connect(redisOpts)
 	if err != nil {
 		return err
 	}
@@ -72,7 +77,14 @@ func (c *assignRoleCommand) Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	return service.NewUserService(db, rdb).AssignRole(ctx, username, roleName)
+	if err := service.NewUserService(db, rdb).AssignRole(ctx, username, roleName); err != nil {
+		return err
+	}
+
+	fmt.Printf("role '%s' is assigned to user %s successfully", roleName, username)
+	fmt.Println()
+
+	return nil
 }
 
 func (c *assignRoleCommand) Help() {

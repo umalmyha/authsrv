@@ -43,7 +43,12 @@ func start(logger *zap.SugaredLogger) error {
 	}
 	defer db.Close()
 
-	rdb, err := redisdb.Connect(nil)
+	redisOpts, err := infrastruct.RedisOptions()
+	if err != nil {
+		return err
+	}
+
+	rdb, err := redisdb.Connect(redisOpts)
 	if err != nil {
 		return err
 	}

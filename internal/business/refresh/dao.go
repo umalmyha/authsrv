@@ -20,10 +20,13 @@ func NewRefreshTokenDao(rdb *redis.Client) *RefreshTokenDao {
 }
 
 func (dao *RefreshTokenDao) FindAllForUser(ctx context.Context, userId string) ([]RefreshTokenDto, error) {
-	var tokens []RefreshTokenDto
+	tokens := make([]RefreshTokenDto, 0)
 
 	tokenStr, err := dao.Client().Get(ctx, userId).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return tokens, nil
+		}
 		return nil, err
 	}
 

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
@@ -154,4 +155,29 @@ func ConnectToDb() (*sqlx.DB, error) {
 	}
 
 	return db, nil
+}
+
+func RedisOptions() (*redis.Options, error) {
+	poolSize, err := strconv.Atoi(os.Getenv("AUTHSRV_CACHE_POOL_SIZE"))
+	if err != nil {
+		return nil, err
+	}
+
+	readTimeout, err := time.ParseDuration(fmt.Sprintf("%ss", os.Getenv("AUTHSRV_READ_TIMEOUT_SECONDS")))
+	if err != nil {
+		return nil, err
+	}
+
+	writeTimeout, err := time.ParseDuration(fmt.Sprintf("%ss", os.Getenv("AUTHSRV_WRITE_TIMEOUT_SECONDS")))
+	if err != nil {
+		return nil, err
+	}
+
+	return &redis.Options{
+		Addr:         os.Getenv("AUTHSRV_CACHE_HOST"),
+		Password:     os.Getenv("AUTHSRV_CACHE_PASSWORD"),
+		PoolSize:     poolSize,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+	}, nil
 }
