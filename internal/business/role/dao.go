@@ -57,6 +57,24 @@ func (dao *RoleDao) Update(ctx context.Context, role RoleDto) error {
 	return nil
 }
 
+func (dao *RoleDao) FindByName(ctx context.Context, name string) (RoleDto, error) {
+	var r RoleDto
+	q := "SELECT ID, NAME, DESCRIPTION FROM ROLES WHERE NAME = $1"
+	if err := sqlx.GetContext(ctx, dao.ec, &r, q, name); err != nil {
+		return r, err
+	}
+	return r, nil
+}
+
+func (dao *RoleDao) FindById(ctx context.Context, id string) (RoleDto, error) {
+	var r RoleDto
+	q := "SELECT ID, NAME, DESCRIPTION FROM ROLES WHERE ID = $1"
+	if err := sqlx.GetContext(ctx, dao.ec, &r, q, id); err != nil {
+		return r, err
+	}
+	return r, nil
+}
+
 type ScopeAssignmentDao struct {
 	ec sqlx.ExtContext
 }

@@ -22,9 +22,10 @@ type AuthService struct {
 	refreshCfg valueobj.RefreshTokenConfig
 }
 
-func NewAuthService(db *sqlx.DB, jwtCfg valueobj.JwtConfig, rfrCfg valueobj.RefreshTokenConfig, passCfg valueobj.PasswordConfig) *AuthService {
+func NewAuthService(db *sqlx.DB, rdb *redis.Client, jwtCfg valueobj.JwtConfig, rfrCfg valueobj.RefreshTokenConfig, passCfg valueobj.PasswordConfig) *AuthService {
 	return &AuthService{
 		db:         db,
+		rdb:        rdb,
 		jwtCfg:     jwtCfg,
 		refreshCfg: rfrCfg,
 		passCfg:    passCfg,
@@ -36,7 +37,7 @@ func (srv *AuthService) Signup(ctx context.Context, u user.NewUserDto) error {
 	repo := user.NewRepository(uow)
 
 	existUsernameFn := func(username string) (bool, error) {
-		if _, err := user.NewUserDao(srv.db).FindByUsername(ctx, u.Username); err != nil {
+		if _, err := user.NewUserDao(srv.db).FindByUsername(ctx, username); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return false, nil
 			}

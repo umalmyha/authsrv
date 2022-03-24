@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/business/refresh"
+	"github.com/umalmyha/authsrv/internal/business/role"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
 	"github.com/umalmyha/authsrv/pkg/helpers"
 )
@@ -27,8 +28,19 @@ type User struct {
 	auth        valueobj.UserAuth
 }
 
-func (u *User) AssignRole(roleId string, existFn roleExistFn) error {
-	roleIdent, err := valueobj.NewRoleId(roleId)
+type RoleFinderByNameFn func(string) (role.RoleDto, error)
+
+func (u *User) AssignRole(name string, finderFn RoleFinderByNameFn) error {
+	r, err := finderFn(name)
+	if err != nil {
+		return err
+	}
+
+	if !r.IsPresent() {
+		return fmt.Errorf("role %s doesn't exist", name)
+	}
+
+	roleIdent, err := valueobj.NewRoleId(r.Id)
 	if err != nil {
 		return err
 	}
@@ -36,22 +48,25 @@ func (u *User) AssignRole(roleId string, existFn roleExistFn) error {
 	for elem := u.roles.Front(); elem != nil; elem = elem.Next() {
 		assignedRoleId, _ := elem.Value.(valueobj.RoleId)
 		if assignedRoleId.Equal(roleIdent) {
-			return fmt.Errorf("role with id %s is already assigned", roleId)
+			return fmt.Errorf("role %s is already assigned", name)
 		}
-	}
-
-	if exist, err := existFn(roleId); err != nil {
-		return err
-	} else if !exist {
-		return fmt.Errorf("role with id %s doesn't exist", roleId)
 	}
 
 	u.roles.PushBack(roleIdent)
 	return nil
 }
 
-func (u *User) UnassignRole(roleId string) error {
-	roleIdent, err := valueobj.NewRoleId(roleId)
+func (u *User) UnassignRole(name string, finderFn RoleFinderByNameFn) error {
+	r, err := finderFn(name)
+	if err != nil {
+		return err
+	}
+
+	if !r.IsPresent() {
+		return fmt.Errorf("role %s doesn't exist", name)
+	}
+
+	roleIdent, err := valueobj.NewRoleId(r.Id)
 	if err != nil {
 		return err
 	}
@@ -66,7 +81,7 @@ func (u *User) UnassignRole(roleId string) error {
 	}
 
 	if rmElem == nil {
-		return fmt.Errorf("role with id %s is not assigned", roleId)
+		return fmt.Errorf("role %s is not assigned to user %s", name, u.username)
 	}
 
 	u.roles.Remove(rmElem)

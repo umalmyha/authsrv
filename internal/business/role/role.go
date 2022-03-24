@@ -1,15 +1,17 @@
 package role
 
 import (
+	"errors"
 	"fmt"
 
 	"container/list"
 
+	"github.com/umalmyha/authsrv/internal/business/scope"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
 	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
-type scopeExistFn func(string) (bool, error)
+type ScopeFinderByNameFn func(string) (scope.ScopeDto, error)
 
 type Role struct {
 	id          string
@@ -22,8 +24,17 @@ func (r *Role) ChangeDescription(descr string) {
 	r.description = valueobj.NewNilString(descr)
 }
 
-func (r *Role) AssignScope(scopeId string, existFn scopeExistFn) error {
-	scopeIdent, err := valueobj.NewScopeId(scopeId)
+func (r *Role) AssignScope(name string, finderFn ScopeFinderByNameFn) error {
+	sc, err := finderFn(name)
+	if err != nil {
+		return err
+	}
+
+	if !sc.IsPresent() {
+		return errors.New(fmt.Sprintf("scope %s doesn't exist", name))
+	}
+
+	scopeIdent, err := valueobj.NewScopeId(sc.Id)
 	if err != nil {
 		return err
 	}
@@ -31,22 +42,25 @@ func (r *Role) AssignScope(scopeId string, existFn scopeExistFn) error {
 	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
 		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
 		if assignedScopeId.Equal(scopeIdent) {
-			return fmt.Errorf("scope with id %s is already assigned", scopeId)
+			return fmt.Errorf("scope %s is already assigned", name)
 		}
-	}
-
-	if exist, err := existFn(scopeId); err != nil {
-		return err
-	} else if !exist {
-		return fmt.Errorf("scope with id %s doesn't exist", scopeId)
 	}
 
 	r.scopes.PushBack(scopeIdent)
 	return nil
 }
 
-func (r *Role) UnassignScope(scopeId string) error {
-	scopeIdent, err := valueobj.NewScopeId(scopeId)
+func (r *Role) UnassignScope(name string, finderFn ScopeFinderByNameFn) error {
+	sc, err := finderFn(name)
+	if err != nil {
+		return err
+	}
+
+	if !sc.IsPresent() {
+		return fmt.Errorf("scope %s doesn't exist", name)
+	}
+
+	scopeIdent, err := valueobj.NewScopeId(sc.Id)
 	if err != nil {
 		return err
 	}
@@ -61,7 +75,7 @@ func (r *Role) UnassignScope(scopeId string) error {
 	}
 
 	if rmElem == nil {
-		return fmt.Errorf("scope with id %s is not assigned", scopeId)
+		return fmt.Errorf("scope %s is not assigned to role %s", name, r.name)
 	}
 
 	r.scopes.Remove(rmElem)

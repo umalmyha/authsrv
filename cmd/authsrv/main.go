@@ -6,10 +6,12 @@ import (
 	"log"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/umalmyha/authsrv/internal/handler"
 	"github.com/umalmyha/authsrv/internal/infrastruct"
 	"github.com/umalmyha/authsrv/internal/service"
+	redisdb "github.com/umalmyha/authsrv/pkg/database/redis"
 	"github.com/umalmyha/authsrv/pkg/server"
 	"github.com/umalmyha/authsrv/pkg/web"
 	"go.uber.org/zap"
@@ -41,12 +43,17 @@ func start(logger *zap.SugaredLogger) error {
 	}
 	defer db.Close()
 
+	rdb, err := redisdb.Connect(nil)
+	if err != nil {
+		return err
+	}
+
 	// start server
-	return startServer(db, logger)
+	return startServer(db, rdb, logger)
 }
 
-func startServer(db *sqlx.DB, logger *zap.SugaredLogger) error {
-	handler, err := handlerV1(db, logger)
+func startServer(db *sqlx.DB, rdb *redis.Client, logger *zap.SugaredLogger) error {
+	handler, err := handlerV1(db, rdb, logger)
 	if err != nil {
 		return err
 	}
@@ -69,7 +76,7 @@ func startServer(db *sqlx.DB, logger *zap.SugaredLogger) error {
 	return nil
 }
 
-func handlerV1(db *sqlx.DB, logger *zap.SugaredLogger) (*chi.Mux, error) {
+func handlerV1(db *sqlx.DB, rdb *redis.Client, logger *zap.SugaredLogger) (*chi.Mux, error) {
 	r := chi.NewRouter()
 
 	jwtCfg, err := infrastruct.JwtConfig()
@@ -87,7 +94,7 @@ func handlerV1(db *sqlx.DB, logger *zap.SugaredLogger) (*chi.Mux, error) {
 		return nil, err
 	}
 
-	authService := service.NewAuthService(db, jwtCfg, rfrCfg, passCfg)
+	authService := service.NewAuthService(db, rdb, jwtCfg, rfrCfg, passCfg)
 	authHandler := handler.NewAuthHandler(authService, rfrCfg)
 
 	r.Route("/api", func(r chi.Router) {

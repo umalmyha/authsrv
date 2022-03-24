@@ -10,6 +10,12 @@ func NewHelpCommand() Executor {
 	return &helpCommand{
 		execs: []Executor{
 			&createUserCommand{},
+			&createScopeCommand{},
+			&createRoleCommand{},
+			&assignScopeCommand{},
+			&unassignScopeCommand{},
+			&assignRoleCommand{},
+			&unassignRoleCommand{},
 			&genKeysCommand{},
 		},
 	}

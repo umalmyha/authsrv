@@ -18,8 +18,8 @@ type Entitier[E any] interface {
 	Clone() E
 }
 
-type UnitOfWorkRepository[E Entitier[E]] interface {
-	ById(entity E) error
+type UnitOfWorkRepository[E Entitier[E], K any] interface {
+	ById(K) (E, error)
 	Add(entity E) error
 	Update(entity E) error
 	Remove(entity E) error

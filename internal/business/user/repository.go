@@ -46,7 +46,7 @@ func (repo *Repository) FindByUsername(ctx context.Context, username string) (*U
 	}
 
 	if !user.IsPresent() {
-		return nil, errors.New(fmt.Sprintf("user %s not found", username))
+		return nil, errors.New(fmt.Sprintf("user %s doesn't exist", username))
 	}
 
 	userAuth, err := NewUserAuthDao(repo.uow.ExtContext()).FindAllForUser(ctx, user.Id)

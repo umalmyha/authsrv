@@ -136,14 +136,14 @@ func TestChangeSetUpdate(t *testing.T) {
 		testId++
 		t.Logf("\tTest %d:\tWhen Person is modified and already in updated state", testId)
 		{
-			stateBeforeUpdate := chs.FindByKey(person).Receive()
+			stateBeforeUpdate := chs.FindByKey(person.id).Receive()
 
 			person.age = 90
 			if err := chs.Update(person); err != nil {
 				t.Fatalf("\t%s\tUnexpected error occurred on update: %v", failed, err)
 			}
 
-			stateAfterUpdate := chs.FindByKey(person).Receive()
+			stateAfterUpdate := chs.FindByKey(person.id).Receive()
 
 			if stateBeforeUpdate.Equal(stateAfterUpdate) {
 				t.Fatalf("\t%s\tPerson state has been changed since the last update call, but wasn't modified in ChangeSet", failed)
@@ -184,14 +184,14 @@ func TestChangeSetUpdate(t *testing.T) {
 				t.Fatalf("\t%s\tUnexpected error occurred on add: %v", failed, err)
 			}
 
-			stateBeforeUpdate := chs.FindByKey(createdAndModifiedPerson).Receive()
+			stateBeforeUpdate := chs.FindByKey(createdAndModifiedPerson.id).Receive()
 
 			createdAndModifiedPerson.age = 19
 			if err := chs.Update(createdAndModifiedPerson); err != nil {
 				t.Fatalf("\t%s\tUnexpected error occurred on add: %v", failed, err)
 			}
 
-			stateAfterUpdate := chs.FindByKey(createdAndModifiedPerson).Receive()
+			stateAfterUpdate := chs.FindByKey(createdAndModifiedPerson.id).Receive()
 
 			if stateBeforeUpdate.Equal(stateAfterUpdate) {
 				t.Fatalf("\t%s\tState hasn't changed after update", failed)
@@ -476,7 +476,7 @@ func TestChangeSetFindByKey(t *testing.T) {
 				t.Fatalf("\t%s\tUnexpected error occurred on add: %v", failed, err)
 			}
 
-			p := chs.FindByKey(createdPerson).Receive()
+			p := chs.FindByKey(createdPerson.id).Receive()
 			if !p.IsPresent() {
 				t.Fatalf("\t%s\tPerson wasn't found even though present in ChangeSet", failed)
 			}
@@ -493,7 +493,7 @@ func TestChangeSetFindByKey(t *testing.T) {
 				t.Fatalf("\t%s\tUnexpected error occurred on update: %v", failed, err)
 			}
 
-			p := chs.FindByKey(updatedPerson).Receive()
+			p := chs.FindByKey(updatedPerson.id).Receive()
 			if !p.IsPresent() {
 				t.Fatalf("\t%s\tPerson wasn't found even though present in ChangeSet", failed)
 			}
@@ -504,7 +504,7 @@ func TestChangeSetFindByKey(t *testing.T) {
 		t.Logf("\tTest %d:\tWhen Person is in unchanged state", testId)
 		{
 			chs.Attach(cleanPerson)
-			p := chs.FindByKey(cleanPerson).Receive()
+			p := chs.FindByKey(cleanPerson.id).Receive()
 			if !p.IsPresent() {
 				t.Fatalf("\t%s\tPerson wasn't found even though present in ChangeSet", failed)
 			}
@@ -520,7 +520,7 @@ func TestChangeSetFindByKey(t *testing.T) {
 				t.Fatalf("\t%s\tUnexpected error occurred on remove: %v", failed, err)
 			}
 
-			p := chs.FindByKey(deletedPerson).Receive()
+			p := chs.FindByKey(deletedPerson.id).Receive()
 			if p.IsPresent() {
 				t.Fatalf("\t%s\tPerson was found even though in deleted state", failed)
 			}
@@ -530,7 +530,7 @@ func TestChangeSetFindByKey(t *testing.T) {
 		testId++
 		t.Logf("\tTest %d:\tWhen Person is not tracked", testId)
 		{
-			p := chs.FindByKey(notTrackedPerson).Receive()
+			p := chs.FindByKey(notTrackedPerson.id).Receive()
 			if p.IsPresent() {
 				t.Fatalf("\t%s\tPerson was found even though not tracked", failed)
 			}
@@ -888,7 +888,7 @@ func TestChangeSetWithPtr(t *testing.T) {
 		testId++
 		t.Logf("\tTest %d:\tWhen ChangeSet has Pet with corresponding id", testId)
 		{
-			pet := chs.FindByKey(tucker).Receive()
+			pet := chs.FindByKey(tucker.id).Receive()
 			if pet == nil || !pet.IsPresent() {
 				t.Fatalf("\t%s\tThere must be entry found, but it wasn't", failed)
 			}
@@ -905,7 +905,7 @@ func TestChangeSetWithPtr(t *testing.T) {
 		{
 			jasper := &Pet{id: "ac2f9f5f-058d-40a5-82d5-af0456e6ab50", name: "Jasper"}
 
-			pet, err := chs.FindByKey(jasper).IfNotPresent(func() (*Pet, error) { return jasper, nil })
+			pet, err := chs.FindByKey(jasper.id).IfNotPresent(func() (*Pet, error) { return jasper, nil })
 			if err != nil {
 				t.Fatalf("\t%s\tUnexpected error occurred on find by id: %v", failed, err)
 			}
@@ -931,7 +931,7 @@ func TestChangeSetWithPtr(t *testing.T) {
 			leo := &Pet{id: "ada2575a-9b68-47e6-8919-fa35843b4e5b", name: "Leo"}
 			cleanBeforeReceive := len(chs.Clean())
 
-			pet, err := chs.FindByKey(leo).IfNotPresent(func() (*Pet, error) { return nil, nil })
+			pet, err := chs.FindByKey(leo.id).IfNotPresent(func() (*Pet, error) { return nil, nil })
 			if err != nil {
 				t.Fatalf("\t%s\tUnexpected error occurred on find by id: %v", failed, err)
 			}

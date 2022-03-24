@@ -6,6 +6,10 @@ type ScopeDto struct {
 	Description *string `db:"description" json:"description"`
 }
 
+func (s ScopeDto) IsPresent() bool {
+	return s.Id != ""
+}
+
 type NewScopeDto struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`

@@ -90,7 +90,7 @@ func (c *genKeysCommand) Help() {
 	fmt.Println("  --privateFile - specify filename for private key (default is private.pem)")
 	fmt.Println("  --publicFile - specify filename for public key (default is public.pem)")
 	fmt.Println("example:")
-	fmt.Println("    genkeys --privateFile=priv.pem --publicFile=pub.pem")
+	fmt.Println("  genkeys --privateFile=priv.pem --publicFile=pub.pem")
 }
 
 func (c *genKeysCommand) extractOptions() genKeysCommandOptions {

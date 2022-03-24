@@ -159,9 +159,7 @@ func (es *ChangeSet[E]) UpdateRange(entities ...E) error {
 	return nil
 }
 
-func (es *ChangeSet[E]) FindByKey(entity E) *valueReceiver[E] {
-	id := entity.Key()
-
+func (es *ChangeSet[E]) FindByKey(id string) *valueReceiver[E] {
 	if entry, found := es.created[id]; found {
 		return es.receiverWithValue(entry)
 	}
