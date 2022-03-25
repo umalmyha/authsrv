@@ -38,6 +38,13 @@ func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	username, password, err := web.BasicAuth(r)
+	if err != nil {
+		return err
+	}
+	signin.Username = username
+	signin.Password = password
+
 	refreshCookie := h.rfrCfg.CookieName()
 	if web.GetCookieValue(r, refreshCookie) != "" {
 		return errors.New("refresh token cookie is set, logout first or refresh session")

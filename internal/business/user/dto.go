@@ -89,8 +89,8 @@ type UserAuthDto struct {
 }
 
 type SigninDto struct {
-	Username    string `json:"user"`
-	Password    string `json:"password"`
+	Username    string `json:"-"`
+	Password    string `json:"-"`
 	Fingerprint string `json:"fingerprint"`
 }
 

@@ -2,10 +2,19 @@ package web
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
+
+func BasicAuth(r *http.Request) (string, string, error) {
+	username, password, ok := r.BasicAuth()
+	if !ok {
+		return username, password, errors.New("failed to parse credentials, please, use Basic Auth when providing credentials")
+	}
+	return username, password, nil
+}
 
 func UrlParam(r *http.Request, name string) string {
 	return chi.URLParam(r, name)
