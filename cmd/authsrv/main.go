@@ -102,12 +102,36 @@ func handlerV1(db *sqlx.DB, rdb *redis.Client, logger *zap.SugaredLogger) (*chi.
 	authService := service.NewAuthService(db, rdb, jwtCfg, rfrCfg, passCfg)
 	authHandler := handler.NewAuthHandler(authService, rfrCfg)
 
+	scopeService := service.NewScopeService(db)
+	scopeHandler := handler.NewScopeHandler(scopeService)
+
+	roleService := service.NewRoleService(db)
+	roleHandler := handler.NewRoleHandler(roleService)
+
+	userService := service.NewUserService(db, rdb)
+	userHandler := handler.NewUserHandler(userService)
+
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/signup", web.WithDefaultErrorHandler(authHandler.Signup))
 			r.Post("/signin", web.WithDefaultErrorHandler(authHandler.Signin))
 			r.Post("/logout", web.WithDefaultErrorHandler(authHandler.Logout))
 			r.Post("/refresh", web.WithDefaultErrorHandler(authHandler.RefreshSession))
+		})
+
+		r.Route("/scopes", func(r chi.Router) {
+			r.Post("/", web.WithDefaultErrorHandler(scopeHandler.CreateScope))
+		})
+
+		r.Route("/roles", func(r chi.Router) {
+			r.Post("/", web.WithDefaultErrorHandler(roleHandler.CreateRole))
+			r.Post("/assign", web.WithDefaultErrorHandler(roleHandler.AssignScope))
+			r.Post("/unassign", web.WithDefaultErrorHandler(roleHandler.UnassignScope))
+		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Post("/assign", web.WithDefaultErrorHandler(userHandler.AssignRole))
+			r.Post("/unassign", web.WithDefaultErrorHandler(userHandler.UnassignRole))
 		})
 	})
 
