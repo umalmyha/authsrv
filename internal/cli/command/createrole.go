@@ -8,7 +8,7 @@ import (
 	"github.com/umalmyha/authsrv/internal/business/role"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
-	"github.com/umalmyha/authsrv/internal/infrastruct"
+	"github.com/umalmyha/authsrv/internal/infra"
 	"github.com/umalmyha/authsrv/internal/service"
 )
 
@@ -43,13 +43,13 @@ func (c *createRoleCommand) Run() error {
 		}
 	}
 
-	db, err := infrastruct.ConnectToDb()
+	db, err := infra.ConnectToDb()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	logger, err := infrastruct.NewCliZapLogger()
+	logger, err := infra.NewCliZapLogger()
 	if err != nil {
 		return err
 	}

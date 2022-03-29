@@ -5,11 +5,11 @@ import (
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/command"
-	"github.com/umalmyha/authsrv/internal/infrastruct"
+	"github.com/umalmyha/authsrv/internal/infra"
 )
 
 func main() {
-	if err := infrastruct.LoadEnv(); err != nil {
+	if err := infra.LoadEnv(); err != nil {
 		fmt.Printf("error occured on loading environment variables: %s", err.Error())
 	}
 

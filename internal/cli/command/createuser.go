@@ -8,7 +8,7 @@ import (
 	"github.com/umalmyha/authsrv/internal/business/user"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
-	"github.com/umalmyha/authsrv/internal/infrastruct"
+	"github.com/umalmyha/authsrv/internal/infra"
 	"github.com/umalmyha/authsrv/internal/service"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 )
@@ -54,13 +54,13 @@ func (c *createUserCommand) Run() error {
 		}
 	}
 
-	db, err := infrastruct.ConnectToDb()
+	db, err := infra.ConnectToDb()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	redisOpts, err := infrastruct.RedisOptions()
+	redisOpts, err := infra.RedisOptions()
 	if err != nil {
 		return err
 	}
@@ -70,23 +70,23 @@ func (c *createUserCommand) Run() error {
 		return err
 	}
 
-	logger, err := infrastruct.NewCliZapLogger()
+	logger, err := infra.NewCliZapLogger()
 	if err != nil {
 		return err
 	}
 	defer logger.Sync()
 
-	jwtCfg, err := infrastruct.JwtConfig()
+	jwtCfg, err := infra.JwtConfig()
 	if err != nil {
 		return err
 	}
 
-	rfrCfg, err := infrastruct.RefreshTokenConfig()
+	rfrCfg, err := infra.RefreshTokenConfig()
 	if err != nil {
 		return err
 	}
 
-	passCfg, err := infrastruct.PasswordConfig()
+	passCfg, err := infra.PasswordConfig()
 	if err != nil {
 		return err
 	}

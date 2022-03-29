@@ -7,7 +7,7 @@ import (
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
-	"github.com/umalmyha/authsrv/internal/infrastruct"
+	"github.com/umalmyha/authsrv/internal/infra"
 	"github.com/umalmyha/authsrv/internal/service"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 )
@@ -52,13 +52,13 @@ func (c *unassignRoleCommand) Run() error {
 		}
 	}
 
-	db, err := infrastruct.ConnectToDb()
+	db, err := infra.ConnectToDb()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	redisOpts, err := infrastruct.RedisOptions()
+	redisOpts, err := infra.RedisOptions()
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (c *unassignRoleCommand) Run() error {
 		return err
 	}
 
-	logger, err := infrastruct.NewCliZapLogger()
+	logger, err := infra.NewCliZapLogger()
 	if err != nil {
 		return err
 	}

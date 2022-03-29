@@ -9,7 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/umalmyha/authsrv/internal/handler"
-	"github.com/umalmyha/authsrv/internal/infrastruct"
+	"github.com/umalmyha/authsrv/internal/infra"
 	"github.com/umalmyha/authsrv/internal/service"
 	redisdb "github.com/umalmyha/authsrv/pkg/database/redis"
 	"github.com/umalmyha/authsrv/pkg/server"
@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	logger, err := infrastruct.NewZapProductionLogger("authentication server")
+	logger, err := infra.NewZapProductionLogger("authentication server")
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -31,19 +31,19 @@ func main() {
 
 func start(logger *zap.SugaredLogger) error {
 	// load environment variables
-	err := infrastruct.LoadEnv()
+	err := infra.LoadEnv()
 	if err != nil {
 		return errors.New(fmt.Sprintf("Error while loading environment variables: %s", err.Error()))
 	}
 
 	// init db
-	db, err := infrastruct.ConnectToDb()
+	db, err := infra.ConnectToDb()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	redisOpts, err := infrastruct.RedisOptions()
+	redisOpts, err := infra.RedisOptions()
 	if err != nil {
 		return err
 	}
@@ -84,17 +84,17 @@ func startServer(db *sqlx.DB, rdb *redis.Client, logger *zap.SugaredLogger) erro
 func handlerV1(db *sqlx.DB, rdb *redis.Client, logger *zap.SugaredLogger) (*chi.Mux, error) {
 	r := chi.NewRouter()
 
-	jwtCfg, err := infrastruct.JwtConfig()
+	jwtCfg, err := infra.JwtConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	rfrCfg, err := infrastruct.RefreshTokenConfig()
+	rfrCfg, err := infra.RefreshTokenConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	passCfg, err := infrastruct.PasswordConfig()
+	passCfg, err := infra.PasswordConfig()
 	if err != nil {
 		return nil, err
 	}
