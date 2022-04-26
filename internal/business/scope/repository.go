@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 )
 
 type Repository struct {
@@ -18,5 +19,8 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) Create(ctx context.Context, scope *Scope) error {
 	dto := scope.Dto()
-	return NewScopeDao(r.db).Create(ctx, dto)
+	if err := NewScopeDao(r.db).Create(ctx, dto); err != nil {
+		return errors.Wrap(err, "failed to create scope")
+	}
+	return nil
 }

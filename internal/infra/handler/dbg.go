@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/umalmyha/authsrv/pkg/web"
+	"github.com/umalmyha/authsrv/pkg/web/response"
 )
 
 type DebugHandler struct{}
@@ -14,5 +14,5 @@ func NewDebugHandler() *DebugHandler {
 
 func (h *DebugHandler) Healthcheck(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add some data later on
-	web.RespondStatus(w, http.StatusOK)
+	response.RespondStatus(w, http.StatusOK)
 }

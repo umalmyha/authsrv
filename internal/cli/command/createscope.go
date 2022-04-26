@@ -2,17 +2,18 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/business/scope"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 )
 
 type createScopeCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -21,9 +22,10 @@ type createScopeCommandOptions struct {
 	help bool
 }
 
-func NewCreateScopeCommand(args args.ParsedArgs) Executor {
+func NewCreateScopeCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &createScopeCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -49,12 +51,6 @@ func (c *createScopeCommand) Run() error {
 	}
 	defer db.Close()
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -63,19 +59,21 @@ func (c *createScopeCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("scope '%s' is created successfully", name)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("scope '%s' is created successfully", name)
+	logger.Println()
 
 	return nil
 }
 
 func (c *createScopeCommand) Help() {
-	fmt.Println("createscope - command creates new scope")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --name - specify scope name")
-	fmt.Println("example:")
-	fmt.Println("  createscope --name=scope1")
+	logger := c.Logger()
+	logger.Println("createscope - command creates new scope")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --name - specify scope name")
+	logger.Println("example:")
+	logger.Println("  createscope --name=scope1")
 }
 
 func (c *createScopeCommand) extractOptions() createScopeCommandOptions {

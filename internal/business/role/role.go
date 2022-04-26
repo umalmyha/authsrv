@@ -1,11 +1,9 @@
 package role
 
 import (
-	"errors"
-	"fmt"
-
 	"container/list"
 
+	"github.com/pkg/errors"
 	"github.com/umalmyha/authsrv/internal/business/scope"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
 	"github.com/umalmyha/authsrv/pkg/helpers"
@@ -27,22 +25,22 @@ func (r *Role) ChangeDescription(descr string) {
 func (r *Role) AssignScope(name string, finderFn ScopeFinderByNameFn) error {
 	sc, err := finderFn(name)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find scope")
 	}
 
 	if !sc.IsPresent() {
-		return errors.New(fmt.Sprintf("scope %s doesn't exist", name))
+		return errors.Errorf("scope %s doesn't exist", name)
 	}
 
 	scopeIdent, err := valueobj.NewScopeId(sc.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build scope identifier")
 	}
 
 	for elem := r.scopes.Front(); elem != nil; elem = elem.Next() {
 		assignedScopeId, _ := elem.Value.(valueobj.ScopeId)
 		if assignedScopeId.Equal(scopeIdent) {
-			return fmt.Errorf("scope %s is already assigned", name)
+			return errors.Errorf("scope %s is already assigned", name)
 		}
 	}
 
@@ -57,12 +55,12 @@ func (r *Role) UnassignScope(name string, finderFn ScopeFinderByNameFn) error {
 	}
 
 	if !sc.IsPresent() {
-		return fmt.Errorf("scope %s doesn't exist", name)
+		return errors.Errorf("scope %s doesn't exist", name)
 	}
 
 	scopeIdent, err := valueobj.NewScopeId(sc.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build scope identifier")
 	}
 
 	var rmElem *list.Element
@@ -75,7 +73,7 @@ func (r *Role) UnassignScope(name string, finderFn ScopeFinderByNameFn) error {
 	}
 
 	if rmElem == nil {
-		return fmt.Errorf("scope %s is not assigned to role %s", name, r.name)
+		return errors.Errorf("scope %s is not assigned to role %s", name, r.name)
 	}
 
 	r.scopes.Remove(rmElem)

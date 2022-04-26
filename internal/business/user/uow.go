@@ -5,10 +5,11 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
+	"github.com/umalmyha/authsrv/pkg/ddd/uow"
 	"github.com/umalmyha/authsrv/pkg/helpers"
-	"github.com/umalmyha/authsrv/pkg/uow"
 )
 
 type unitOfWork struct {
@@ -38,15 +39,15 @@ func (uow *unitOfWork) RegisterClean(user *User) error {
 
 func (uow *unitOfWork) RegisterNew(user *User) error {
 	if err := uow.users.Add(user.ToDto()); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add user DTO to changeset")
 	}
 
 	if err := uow.assignedRoles.AddRange(user.RolesDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add roles assignments DTOs to changeset")
 	}
 
 	if err := uow.tokens.AddRange(user.TokensDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add tokens DTOs to changeset")
 	}
 
 	return nil
@@ -54,15 +55,15 @@ func (uow *unitOfWork) RegisterNew(user *User) error {
 
 func (uow *unitOfWork) RegisterDeleted(user *User) error {
 	if err := uow.users.Remove(user.ToDto()); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete user DTO in changeset")
 	}
 
 	if err := uow.assignedRoles.RemoveRange(user.RolesDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete roles assignments DTOs in changeset")
 	}
 
 	if err := uow.tokens.RemoveRange(user.TokensDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete tokens DTOs in changeset")
 	}
 
 	return nil
@@ -71,7 +72,7 @@ func (uow *unitOfWork) RegisterDeleted(user *User) error {
 func (uow *unitOfWork) RegisterAmended(user *User) error {
 	userDto := user.ToDto()
 	if err := uow.users.Update(userDto); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update user DTO in changeset")
 	}
 
 	createdRoles, _, deletedRoles := uow.assignedRoles.DeltaWithMatched(user.RolesDto(), func(role RoleAssignmentDto) bool {
@@ -79,11 +80,11 @@ func (uow *unitOfWork) RegisterAmended(user *User) error {
 	})
 
 	if err := uow.assignedRoles.AddRange(createdRoles...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add roles assignments DTOs to changeset")
 	}
 
 	if err := uow.assignedRoles.RemoveRange(deletedRoles...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to remove roles assignments DTOs in changeset")
 	}
 
 	createdTokens, _, deletedTokens := uow.tokens.DeltaWithMatched(user.TokensDto(), func(token refresh.RefreshTokenDto) bool {
@@ -91,11 +92,11 @@ func (uow *unitOfWork) RegisterAmended(user *User) error {
 	})
 
 	if err := uow.tokens.AddRange(createdTokens...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add tokens DTOs to changeset")
 	}
 
 	if err := uow.tokens.RemoveRange(deletedTokens...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete tokens DTOs in changeset")
 	}
 
 	return nil
@@ -104,7 +105,7 @@ func (uow *unitOfWork) RegisterAmended(user *User) error {
 func (uow *unitOfWork) Flush(ctx context.Context) error {
 	tx, err := uow.Tx(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to open transaction")
 	}
 	defer tx.Rollback()
 
@@ -114,7 +115,7 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 
 	userTokens, err := uow.usersEncodedTokens()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to encode user tokens")
 	}
 
 	if rmRoles := uow.assignedRoles.Deleted(); len(rmRoles) > 0 {
@@ -124,7 +125,7 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 
 		for userId, rolesIds := range rolesGroups {
 			if err := roleDao.DeleteByUserIdAndRoleIdsIn(ctx, userId, rolesIds); err != nil {
-				return err
+				return errors.Wrap(err, "failed to process roles assignments deletion")
 			}
 		}
 	}
@@ -134,26 +135,26 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 			return user.Id
 		}
 		if err := userDao.DeleteWhereIdsIn(ctx, helpers.Map(rmUsers, mapper)); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process users deletion")
 		}
 	}
 
 	if createdUsers := uow.users.Created(); len(createdUsers) > 0 {
 		if err := userDao.CreateMulti(ctx, createdUsers); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process users creation")
 		}
 	}
 
 	if createdRoles := uow.assignedRoles.Created(); len(createdRoles) > 0 {
 		if err := roleDao.CreateMulti(ctx, createdRoles); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process roles assignments creation")
 		}
 	}
 
 	if updatedUsers := uow.users.Updated(); len(updatedUsers) > 0 {
 		for _, updUser := range updatedUsers {
 			if err := userDao.Update(ctx, updUser); err != nil {
-				return err
+				return errors.Wrap(err, "failed to process users update")
 			}
 		}
 	}
@@ -163,19 +164,19 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 		pipeline := tokenDao.WithinTxWithAttempts(ctx, userIds, func(pipe redis.Pipeliner) error {
 			for userId, encodedToken := range userTokens {
 				if err := pipe.Set(ctx, userId, encodedToken, 0).Err(); err != nil {
-					return err
+					return errors.Wrap(err, "failed to update refresh token")
 				}
 			}
 			return nil
 		})
 
 		if err := pipeline(3); err != nil {
-			return err
+			return errors.Wrap(err, "failed to update refresh tokens in transaction pipeline")
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to commit transaction")
 	}
 	return uow.Dispose()
 }

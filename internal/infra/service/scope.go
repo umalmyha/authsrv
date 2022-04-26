@@ -3,7 +3,8 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
+
+	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/umalmyha/authsrv/internal/business/scope"
@@ -32,7 +33,7 @@ func (srv *ScopeService) CreateScope(ctx context.Context, ns scope.NewScopeDto) 
 
 	sc, err := scope.FromNewScopeDto(ns, existFn)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build scope from DTO")
 	}
 
 	return scope.NewRepository(srv.db).Create(ctx, sc)

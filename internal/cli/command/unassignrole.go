@@ -2,17 +2,18 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 )
 
 type unassignRoleCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -22,9 +23,10 @@ type unassignRoleCommandOptions struct {
 	help     bool
 }
 
-func NewUnassignRoleCommand(args args.ParsedArgs) Executor {
+func NewUnassignRoleCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &unassignRoleCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -68,12 +70,6 @@ func (c *unassignRoleCommand) Run() error {
 		return err
 	}
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -81,20 +77,22 @@ func (c *unassignRoleCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("role '%s' is unassigned from user %s successfully", roleName, username)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("role '%s' is unassigned from user %s successfully", roleName, username)
+	logger.Println()
 
 	return nil
 }
 
 func (c *unassignRoleCommand) Help() {
-	fmt.Println("unassignrole - command unassigns role from user")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --role - specify role name")
-	fmt.Println("  --from - specify username")
-	fmt.Println("example:")
-	fmt.Println("  assignrole --role=role1 --from=username1")
+	logger := c.Logger()
+	logger.Println("unassignrole - command unassigns role from user")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --role - specify role name")
+	logger.Println("  --from - specify username")
+	logger.Println("example:")
+	logger.Println("  assignrole --role=role1 --from=username1")
 }
 
 func (c *unassignRoleCommand) extractOptions() unassignRoleCommandOptions {

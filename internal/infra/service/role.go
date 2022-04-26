@@ -3,7 +3,8 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
+
+	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/umalmyha/authsrv/internal/business/role"
@@ -36,11 +37,11 @@ func (srv *RoleService) CreateRole(ctx context.Context, nr role.NewRoleDto) erro
 
 	r, err := role.FromNewRoleDto(nr, existFn)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build role from DTO")
 	}
 
 	if err := repo.Add(r); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add role to repository")
 	}
 
 	return uow.Flush(ctx)
@@ -52,15 +53,15 @@ func (srv *RoleService) AssignScope(ctx context.Context, roleName string, scopeN
 
 	r, err := repo.FindByName(ctx, roleName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find role by name")
 	}
 
 	if err := r.AssignScope(scopeName, srv.findScopeByNameFn(ctx)); err != nil {
-		return err
+		return errors.Wrap(err, "failed to assign scope")
 	}
 
 	if err := repo.Update(r); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update role in repository")
 	}
 
 	return uow.Flush(ctx)
@@ -72,15 +73,15 @@ func (srv *RoleService) UnassignScope(ctx context.Context, roleName string, scop
 
 	r, err := repo.FindByName(ctx, roleName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find role by name")
 	}
 
 	if err := r.UnassignScope(scopeName, srv.findScopeByNameFn(ctx)); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unassign scope")
 	}
 
 	if err := repo.Update(r); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update role in repository")
 	}
 
 	return uow.Flush(ctx)

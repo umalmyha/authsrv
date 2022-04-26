@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/umalmyha/authsrv/internal/service"
-	"github.com/umalmyha/authsrv/pkg/web"
+	"github.com/umalmyha/authsrv/internal/infra/service"
+	"github.com/umalmyha/authsrv/pkg/web/request"
 )
 
 type UserHandler struct {
@@ -23,7 +23,7 @@ func (h *UserHandler) AssignRole(w http.ResponseWriter, r *http.Request) error {
 		RoleName string `json:"role"`
 	}{}
 
-	if err := web.JsonReqBody(r, &assingment); err != nil {
+	if err := request.JsonReqBody(r, &assingment); err != nil {
 		return err
 	}
 	return h.userSrv.AssignRole(r.Context(), assingment.Username, assingment.RoleName)
@@ -35,7 +35,7 @@ func (h *UserHandler) UnassignRole(w http.ResponseWriter, r *http.Request) error
 		RoleName string `json:"role"`
 	}{}
 
-	if err := web.JsonReqBody(r, &assingment); err != nil {
+	if err := request.JsonReqBody(r, &assingment); err != nil {
 		return err
 	}
 	return h.userSrv.UnassignRole(r.Context(), assingment.Username, assingment.RoleName)

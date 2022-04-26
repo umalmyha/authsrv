@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/umalmyha/authsrv/internal/business/role"
-	"github.com/umalmyha/authsrv/internal/service"
-	"github.com/umalmyha/authsrv/pkg/web"
+	"github.com/umalmyha/authsrv/internal/infra/service"
+	"github.com/umalmyha/authsrv/pkg/web/request"
 )
 
 type RoleHandler struct {
@@ -20,7 +20,7 @@ func NewRoleHandler(roleSrv *service.RoleService) *RoleHandler {
 
 func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) error {
 	var nr role.NewRoleDto
-	if err := web.JsonReqBody(r, &nr); err != nil {
+	if err := request.JsonReqBody(r, &nr); err != nil {
 		return err
 	}
 	return h.roleSrv.CreateRole(r.Context(), nr)
@@ -32,7 +32,7 @@ func (h *RoleHandler) AssignScope(w http.ResponseWriter, r *http.Request) error 
 		ScopeName string `json:"scope"`
 	}{}
 
-	if err := web.JsonReqBody(r, &assignment); err != nil {
+	if err := request.JsonReqBody(r, &assignment); err != nil {
 		return err
 	}
 	return h.roleSrv.AssignScope(r.Context(), assignment.RoleName, assignment.ScopeName)
@@ -44,7 +44,7 @@ func (h *RoleHandler) UnassignScope(w http.ResponseWriter, r *http.Request) erro
 		ScopeName string `json:"scope"`
 	}{}
 
-	if err := web.JsonReqBody(r, &assignment); err != nil {
+	if err := request.JsonReqBody(r, &assignment); err != nil {
 		return err
 	}
 	return h.roleSrv.UnassignScope(r.Context(), assignment.RoleName, assignment.ScopeName)

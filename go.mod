@@ -10,6 +10,7 @@ require (
 	github.com/jackc/pgx/v4 v4.14.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/joho/godotenv v1.4.0
+	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	golang.org/x/exp v0.0.0-20220318154914-8dddf5d87bd8

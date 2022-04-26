@@ -1,8 +1,9 @@
 package valueobj
 
 import (
-	"errors"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type RefreshTokenConfig struct {

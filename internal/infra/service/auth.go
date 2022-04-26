@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
@@ -48,11 +48,11 @@ func (srv *AuthService) Signup(ctx context.Context, u user.NewUserDto) error {
 
 	user, err := user.FromNewUserDto(u, srv.passCfg, existUsernameFn)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create user from DTO")
 	}
 
 	if err := repo.Add(user); err != nil {
-		return err
+		return errors.Wrap(err, "failed to create user from DTO")
 	}
 
 	return uow.Flush(ctx)
@@ -67,16 +67,16 @@ func (srv *AuthService) Signin(ctx context.Context, signin user.SigninDto) (valu
 
 	user, err := repo.FindByUsername(ctx, signin.Username)
 	if err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to find user in repository")
 	}
 
 	if user == nil {
-		return accessToken, refreshToken, errors.New(fmt.Sprintf("user %s doesn't exist", signin.Username))
+		return accessToken, refreshToken, errors.Errorf("user %s doesn't exist", signin.Username)
 	}
 
 	verified, err := user.VerifyPassword(signin.Password)
 	if err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to verify user password")
 	}
 
 	if !verified {
@@ -87,20 +87,20 @@ func (srv *AuthService) Signin(ctx context.Context, signin user.SigninDto) (valu
 
 	accessToken, err = user.GenerateJwt(issuedAt, srv.jwtCfg)
 	if err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to generate access token")
 	}
 
 	refreshToken, err = user.GenerateRefreshToken(signin.Fingerprint, issuedAt, srv.refreshCfg)
 	if err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to generate refresh token")
 	}
 
 	if err := repo.Update(user); err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to update user in repository")
 	}
 
 	if err := uow.Flush(ctx); err != nil {
-		return accessToken, refreshToken, err
+		return accessToken, refreshToken, errors.Wrap(err, "failed to flush changes")
 	}
 
 	return accessToken, refreshToken, nil
@@ -113,11 +113,11 @@ func (srv *AuthService) Logout(ctx context.Context, logout user.LogoutDto) error
 	repo := user.NewRepository(uow)
 	user, err := repo.FindByUsername(ctx, logout.Username)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find user in repository")
 	}
 
 	if user == nil {
-		return errors.New(fmt.Sprintf("user %s doesn't exist", logout.Username))
+		return errors.Errorf("user %s doesn't exist", logout.Username)
 	}
 
 	return user.DiscardRefreshToken(logout)
@@ -135,27 +135,27 @@ func (srv *AuthService) RefreshSession(ctx context.Context, rfr user.RefreshDto)
 
 	user, err := repo.FindByUsername(ctx, rfr.Username)
 	if err != nil {
-		return jwt, rfrToken, err
+		return jwt, rfrToken, errors.Wrap(err, "failed to find user in repository")
 	}
 
 	if user == nil {
-		return jwt, rfrToken, errors.New(fmt.Sprintf("user %s doesn't exist", rfr.Username))
+		return jwt, rfrToken, errors.Errorf("user %s doesn't exist", rfr.Username)
 	}
 
 	now := time.Now().UTC()
 
 	if err = user.RefreshSession(rfr, now); err != nil {
-		return jwt, rfrToken, err
+		return jwt, rfrToken, errors.Wrap(err, "failed to refresh session")
 	}
 
 	jwt, err = user.GenerateJwt(now, srv.jwtCfg)
 	if err != nil {
-		return jwt, rfrToken, err
+		return jwt, rfrToken, errors.Wrap(err, "failed to generate access token")
 	}
 
 	rfrToken, err = user.GenerateRefreshToken(rfr.Fingerprint, now, srv.refreshCfg)
 	if err != nil {
-		return jwt, rfrToken, err
+		return jwt, rfrToken, errors.Wrap(err, "failed to generate refresh token")
 	}
 
 	return jwt, rfrToken, nil

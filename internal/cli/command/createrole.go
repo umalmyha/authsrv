@@ -2,17 +2,18 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/business/role"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 )
 
 type createRoleCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -21,9 +22,10 @@ type createRoleCommandOptions struct {
 	help bool
 }
 
-func NewCreateRoleCommand(args args.ParsedArgs) Executor {
+func NewCreateRoleCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &createRoleCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -49,12 +51,6 @@ func (c *createRoleCommand) Run() error {
 	}
 	defer db.Close()
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -63,19 +59,21 @@ func (c *createRoleCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("role '%s' is created successfully", name)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("role '%s' is created successfully", name)
+	logger.Println()
 
 	return nil
 }
 
 func (c *createRoleCommand) Help() {
-	fmt.Println("createrole - command creates new role")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --name - specify role name")
-	fmt.Println("example:")
-	fmt.Println("  createrole --name=role1")
+	logger := c.Logger()
+	logger.Println("createrole - command creates new role")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --name - specify role name")
+	logger.Println("example:")
+	logger.Println("  createrole --name=role1")
 }
 
 func (c *createRoleCommand) extractOptions() createRoleCommandOptions {

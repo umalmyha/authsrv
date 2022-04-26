@@ -1,8 +1,10 @@
-package web
+package response
 
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/umalmyha/authsrv/pkg/web/request"
 )
 
 type ResposeWriterFn func(w http.ResponseWriter) error
@@ -36,7 +38,7 @@ func SetCookie(w http.ResponseWriter, cookie *http.Cookie) {
 }
 
 func DeleteCookie(r *http.Request, w http.ResponseWriter, name string) {
-	cookie, err := GetCookie(r, name)
+	cookie, err := request.GetCookie(r, name)
 	if err != nil {
 		return
 	}

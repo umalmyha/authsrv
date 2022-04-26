@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/umalmyha/authsrv/pkg/database/rdb"
 )
 
@@ -45,11 +46,11 @@ func (dao *UserDao) CreateMulti(ctx context.Context, users []UserDto) error {
 
 	q, params, err := rdb.BulkInsertQuery("USERS", cols, users, applier)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build bulk insert SQL query for users creation")
 	}
 
 	if _, err := dao.ec.ExecContext(ctx, q, params...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to create users")
 	}
 
 	return nil
@@ -58,12 +59,12 @@ func (dao *UserDao) CreateMulti(ctx context.Context, users []UserDto) error {
 func (dao *UserDao) DeleteWhereIdsIn(ctx context.Context, ids []string) error {
 	inRange, params, err := rdb.WhereIn(ids)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to generate SQL where clause for users deletion")
 	}
 
 	q := fmt.Sprintf("DELETE FROM USERS WHERE ID IN %s", inRange)
 	if _, err := dao.ec.ExecContext(ctx, q, params...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete users")
 	}
 
 	return nil
@@ -80,7 +81,7 @@ func (dao *UserDao) Update(ctx context.Context, user UserDto) error {
 
 	params := []any{user.Email, user.FirstName, user.LastName, user.MiddleName, user.IsSuperuser, user.Password, user.Id}
 	if _, err := dao.ec.ExecContext(ctx, q, params...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update user")
 	}
 
 	return nil
@@ -90,7 +91,7 @@ func (dao *UserDao) FindByUsername(ctx context.Context, username string) (UserDt
 	var user UserDto
 	q := "SELECT * FROM USERS WHERE USERNAME = $1 LIMIT 1"
 	if err := sqlx.GetContext(ctx, dao.ec, &user, q, username); err != nil {
-		return user, err
+		return user, errors.Wrap(err, "failed to read user by username")
 	}
 	return user, nil
 }
@@ -112,11 +113,11 @@ func (dao *RoleAssignmentDao) CreateMulti(ctx context.Context, roles []RoleAssig
 
 	q, params, err := rdb.BulkInsertQuery("USER_ROLES", []string{"USER_ID", "ROLE_ID"}, roles, applier)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build bulk insert SQL query for role assignments creation")
 	}
 
 	if _, err := dao.ec.ExecContext(ctx, q, params...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to create role assignments")
 	}
 
 	return nil
@@ -125,13 +126,13 @@ func (dao *RoleAssignmentDao) CreateMulti(ctx context.Context, roles []RoleAssig
 func (dao *RoleAssignmentDao) DeleteByUserIdAndRoleIdsIn(ctx context.Context, userId string, roleIds []string) error {
 	inRange, params, err := rdb.WhereIn(roleIds)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to generate SQL where clause")
 	}
 
 	params = append(params, userId)
 	q := fmt.Sprintf("DELETE FROM USER_ROLES WHERE ROLE_ID IN %s AND USER_ID = $%d", inRange, len(params))
 	if _, err := dao.ec.ExecContext(ctx, q, params...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete role assignments")
 	}
 
 	return nil
@@ -152,7 +153,7 @@ func (dao *UserAuthDao) FindAllForUser(ctx context.Context, userId string) ([]Us
 	q := "SELECT ROLE_ID, ROLE_NAME, SCOPE_ID, SCOPE_NAME FROM USER_AUTH WHERE USER_ID = $1"
 
 	if err := sqlx.SelectContext(ctx, dao.ec, &userAuth, q, userId); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read users auth data")
 	}
 	return userAuth, nil
 }

@@ -1,9 +1,9 @@
 package valueobj
 
 import (
-	"errors"
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -92,7 +92,7 @@ func NewJwtConfig(alg, issuer, pkey string, ttl time.Duration) (JwtConfig, error
 	var cfg JwtConfig
 
 	if jwt.GetSigningMethod(alg) == nil {
-		return cfg, errors.New(fmt.Sprintf("%s invalid alogrithm for JWT generation", alg))
+		return cfg, errors.Errorf("%s invalid alogrithm for JWT generation", alg)
 	}
 	cfg.algorithm = alg
 

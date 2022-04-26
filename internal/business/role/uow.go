@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
+	"github.com/umalmyha/authsrv/pkg/ddd/uow"
 	"github.com/umalmyha/authsrv/pkg/helpers"
-	"github.com/umalmyha/authsrv/pkg/uow"
 )
 
 type unitOfWork struct {
@@ -30,11 +31,11 @@ func (uow *unitOfWork) RegisterClean(role *Role) error {
 
 func (uow *unitOfWork) RegisterNew(role *Role) error {
 	if err := uow.roles.Add(role.ToDto()); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add role DTO to changeset")
 	}
 
 	if err := uow.assignedScopes.AddRange(role.ScopesDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add scope assignments DTOs to changeset")
 	}
 
 	return nil
@@ -42,11 +43,11 @@ func (uow *unitOfWork) RegisterNew(role *Role) error {
 
 func (uow *unitOfWork) RegisterDeleted(role *Role) error {
 	if err := uow.roles.Remove(role.ToDto()); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete role DTO in changeset")
 	}
 
 	if err := uow.assignedScopes.RemoveRange(role.ScopesDto()...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete scope assignments DTOs in changeset")
 	}
 
 	return nil
@@ -55,7 +56,7 @@ func (uow *unitOfWork) RegisterDeleted(role *Role) error {
 func (uow *unitOfWork) RegisterAmended(role *Role) error {
 	roleDto := role.ToDto()
 	if err := uow.roles.Update(role.ToDto()); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update role DTO in changeset")
 	}
 
 	scopes := role.ScopesDto()
@@ -64,11 +65,11 @@ func (uow *unitOfWork) RegisterAmended(role *Role) error {
 	})
 
 	if err := uow.assignedScopes.AddRange(created...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add scope assignments DTOs to changeset")
 	}
 
 	if err := uow.assignedScopes.RemoveRange(deleted...); err != nil {
-		return err
+		return errors.Wrap(err, "failed to delete scope assignments DTOs in changeset")
 	}
 
 	return nil
@@ -77,7 +78,7 @@ func (uow *unitOfWork) RegisterAmended(role *Role) error {
 func (uow *unitOfWork) Flush(ctx context.Context) error {
 	tx, err := uow.Tx(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to open transaction")
 	}
 	defer tx.Rollback()
 
@@ -91,7 +92,7 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 
 		for roleId, scopeIds := range scopesGroup {
 			if err := scopesDao.DeleteByRoleIdAndScopeIdsIn(ctx, roleId, scopeIds); err != nil {
-				return err
+				return errors.Wrap(err, "failed to process scopes assignments deletion")
 			}
 		}
 	}
@@ -101,32 +102,32 @@ func (uow *unitOfWork) Flush(ctx context.Context) error {
 			return delRole.Id
 		}
 		if err := rolesDao.DeleteWhereIdsIn(ctx, helpers.Map(deletedRoles, mapper)); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process roles deletion")
 		}
 	}
 
 	if createdRoles := uow.roles.Created(); len(createdRoles) > 0 {
 		if err := rolesDao.CreateMulti(ctx, createdRoles); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process roles creation")
 		}
 	}
 
 	if createdScopes := uow.assignedScopes.Created(); len(createdScopes) > 0 {
 		if err := scopesDao.CreateMulti(ctx, createdScopes); err != nil {
-			return err
+			return errors.Wrap(err, "failed to process scopes assignments creation")
 		}
 	}
 
 	if updatedRoles := uow.roles.Updated(); len(updatedRoles) > 0 {
 		for _, updRole := range updatedRoles {
 			if err := rolesDao.Update(ctx, updRole); err != nil {
-				return err
+				return errors.Wrap(err, "failed to process roles update")
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to commit transaction")
 	}
 	return uow.Dispose()
 }

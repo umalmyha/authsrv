@@ -1,24 +1,27 @@
 package refresh
 
 import (
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	pkgerrors "github.com/pkg/errors"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
-	invariant "github.com/umalmyha/authsrv/internal/errors"
+	"github.com/umalmyha/authsrv/pkg/ddd/errors"
 )
 
 func NewRefreshToken(fgrprint string, issuedAt time.Time, cfg valueobj.RefreshTokenConfig) (*RefreshToken, error) {
-	validation := invariant.NewValidationResult()
+	validation := errors.NewValidation()
 
 	if fgrprint == "" {
-		validation.Add(invariant.NewInvariantViolationError("fingerprint is mandatory", "fingerprint"))
-		return nil, validation.Error()
+		validation.AddViolation(errors.NewInvariantViolation("fingerprint is mandatory", "fingerprint", errors.ViolationSeverityErr))
 	}
 
 	if issuedAt.IsZero() {
-		return nil, errors.New("issue date can't be initial")
+		validation.AddViolation(errors.NewInvariantViolation("issue date can't be initial", "issuedAt", errors.ViolationSeverityErr))
+	}
+
+	if validation.HasError() {
+		return nil, pkgerrors.Wrap(validation.Err(), "validation failed for refresh token creation")
 	}
 
 	expiresAt := issuedAt.Add(cfg.TimeToLive())

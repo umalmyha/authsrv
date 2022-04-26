@@ -2,6 +2,8 @@ package web
 
 import (
 	"net/http"
+
+	"github.com/umalmyha/authsrv/pkg/web/response"
 )
 
 type httpHandlerFuncWithErr func(http.ResponseWriter, *http.Request) error
@@ -24,12 +26,5 @@ func WithDefaultErrorHandler(fn httpHandlerFuncWithErr) http.HandlerFunc {
 }
 
 func defaultErrorHandler(w http.ResponseWriter, err error) {
-	switch err.(type) {
-	case *RequestErr:
-		RespondJson(w, http.StatusBadRequest, err)
-	case *NotFoundErr:
-		RespondStatus(w, http.StatusNotFound)
-	default:
-		RespondStatus(w, http.StatusInternalServerError)
-	}
+	response.RespondStatus(w, http.StatusInternalServerError)
 }

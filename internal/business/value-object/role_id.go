@@ -1,9 +1,8 @@
 package valueobj
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 type RoleId string

@@ -3,6 +3,8 @@ package role
 import (
 	"context"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 type Repository struct {
@@ -30,7 +32,7 @@ func (repo *Repository) FindById(ctx context.Context, id string) (*Role, error) 
 
 	role, err := repo.uow.roles.FindByKey(id).IfNotPresent(notPresentFn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read role aggregate by id")
 	}
 
 	if !role.IsPresent() {
@@ -43,7 +45,7 @@ func (repo *Repository) FindById(ctx context.Context, id string) (*Role, error) 
 
 	r, err := fromDbDtos(role, assignedScopes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build role aggregate from db DTOs")
 	}
 
 	return r, repo.uow.RegisterClean(r)
@@ -54,11 +56,9 @@ func (repo *Repository) FindByName(ctx context.Context, name string) (*Role, err
 		return NewRoleDao(repo.uow.ExtContext()).FindByName(ctx, name)
 	}
 
-	role, err := repo.uow.roles.Find(func(dto RoleDto) bool {
-		return dto.Name == name
-	}).IfNotPresent(notPresentFn)
+	role, err := repo.uow.roles.Find(func(dto RoleDto) bool { return dto.Name == name }).IfNotPresent(notPresentFn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read role aggregate by name")
 	}
 
 	if !role.IsPresent() {
@@ -71,7 +71,7 @@ func (repo *Repository) FindByName(ctx context.Context, name string) (*Role, err
 
 	r, err := fromDbDtos(role, assignedScopes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build role aggregate from db DTOs")
 	}
 
 	return r, repo.uow.RegisterClean(r)

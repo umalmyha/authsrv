@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
@@ -30,19 +30,19 @@ func (srv *UserService) AssignRole(ctx context.Context, username string, roleNam
 
 	user, err := repo.FindByUsername(ctx, username)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find user in repository")
 	}
 
 	if user == nil {
-		return fmt.Errorf("user %s doesn't exist", username)
+		return errors.Errorf("user %s doesn't exist", username)
 	}
 
 	if err := user.AssignRole(roleName, srv.findRoleByNameFn(ctx)); err != nil {
-		return err
+		return errors.Wrap(err, "failed to assign role")
 	}
 
 	if err := repo.Update(user); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update user in repository")
 	}
 
 	return uow.Flush(ctx)
@@ -54,19 +54,19 @@ func (srv *UserService) UnassignRole(ctx context.Context, username string, roleN
 
 	user, err := repo.FindByUsername(ctx, username)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to find user in repository")
 	}
 
 	if user == nil {
-		return fmt.Errorf("user %s doesn't exist", username)
+		return errors.Errorf("user %s doesn't exist", username)
 	}
 
 	if err := user.UnassignRole(roleName, srv.findRoleByNameFn(ctx)); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unassign role")
 	}
 
 	if err := repo.Update(user); err != nil {
-		return err
+		return errors.Wrap(err, "failed to update user in repository")
 	}
 
 	return uow.Flush(ctx)

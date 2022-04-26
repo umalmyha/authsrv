@@ -2,9 +2,9 @@ package user
 
 import (
 	"container/list"
-	"errors"
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	"github.com/umalmyha/authsrv/internal/business/role"
@@ -33,22 +33,22 @@ type RoleFinderByNameFn func(string) (role.RoleDto, error)
 func (u *User) AssignRole(name string, finderFn RoleFinderByNameFn) error {
 	r, err := finderFn(name)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read user")
 	}
 
 	if !r.IsPresent() {
-		return fmt.Errorf("role %s doesn't exist", name)
+		return errors.Errorf("role %s doesn't exist", name)
 	}
 
 	roleIdent, err := valueobj.NewRoleId(r.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build role identifier")
 	}
 
 	for elem := u.roles.Front(); elem != nil; elem = elem.Next() {
 		assignedRoleId, _ := elem.Value.(valueobj.RoleId)
 		if assignedRoleId.Equal(roleIdent) {
-			return fmt.Errorf("role %s is already assigned", name)
+			return errors.Errorf("role %s is already assigned", name)
 		}
 	}
 
@@ -59,16 +59,16 @@ func (u *User) AssignRole(name string, finderFn RoleFinderByNameFn) error {
 func (u *User) UnassignRole(name string, finderFn RoleFinderByNameFn) error {
 	r, err := finderFn(name)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read user")
 	}
 
 	if !r.IsPresent() {
-		return fmt.Errorf("role %s doesn't exist", name)
+		return errors.Errorf("role %s doesn't exist", name)
 	}
 
 	roleIdent, err := valueobj.NewRoleId(r.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build role identifier")
 	}
 
 	var rmElem *list.Element
@@ -81,7 +81,7 @@ func (u *User) UnassignRole(name string, finderFn RoleFinderByNameFn) error {
 	}
 
 	if rmElem == nil {
-		return fmt.Errorf("role %s is not assigned to user %s", name, u.username)
+		return errors.Errorf("role %s is not assigned to user %s", name, u.username)
 	}
 
 	u.roles.Remove(rmElem)
@@ -96,13 +96,13 @@ func (u *User) GenerateRefreshToken(fgrprint string, issuedAt time.Time, cfg val
 	for elem := u.tokens.Front(); elem != nil; elem = elem.Next() {
 		token, _ := elem.Value.(*refresh.RefreshToken)
 		if token.Fingerprint() == fgrprint {
-			return nil, errors.New(fmt.Sprintf("refresh token for device %s is generated already", fgrprint))
+			return nil, errors.Errorf("refresh token for device %s is generated already", fgrprint)
 		}
 	}
 
 	token, err := refresh.NewRefreshToken(fgrprint, issuedAt, cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create refresh token")
 	}
 
 	if u.tokens.Len() == cfg.MaxTokensCount() {
@@ -124,7 +124,7 @@ func (u *User) DiscardRefreshToken(logout LogoutDto) error {
 
 	rmElem := u.findRefreshTokenElemById(logout.RefreshTokenId)
 	if rmElem == nil {
-		return errors.New(fmt.Sprintf("provided refresh token doesn't exist or doesn't belong to user %s", u.username))
+		return errors.Errorf("provided refresh token doesn't exist or doesn't belong to user %s", u.username)
 	}
 
 	token, _ := rmElem.Value.(*refresh.RefreshToken)
@@ -148,7 +148,7 @@ func (u *User) RefreshSession(rfr RefreshDto, now time.Time) error {
 
 	tokenElem := u.findRefreshTokenElemById(rfr.RefreshTokenId)
 	if tokenElem == nil {
-		return errors.New(fmt.Sprintf("provided refresh token doesn't exist or doesn't belong to user %s", u.username))
+		return errors.Errorf("provided refresh token doesn't exist or doesn't belong to user %s", u.username)
 	}
 	u.tokens.Remove(tokenElem)
 
@@ -171,7 +171,7 @@ func (u *User) VerifyPassword(password string) (bool, error) {
 
 	hash, err := valueobj.GenerateHash([]byte(password))
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "failed to generate password hash")
 	}
 
 	return hash == u.password.Hash(), nil

@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
@@ -18,12 +18,14 @@ type genKeysCommandOptions struct {
 }
 
 type genKeysCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
-func NewGenKeysCommand(args args.ParsedArgs) Executor {
+func NewGenKeysCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &genKeysCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -80,17 +82,21 @@ func (c *genKeysCommand) Run() error {
 		return err
 	}
 
+	logger := c.Logger()
+	logger.Println("private and public key files are generated successfully")
+
 	return nil
 }
 
 func (c *genKeysCommand) Help() {
-	fmt.Println("genkeys - command create private and public key files for JWT generation")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --privateFile - specify filename for private key (default is private.pem)")
-	fmt.Println("  --publicFile - specify filename for public key (default is public.pem)")
-	fmt.Println("example:")
-	fmt.Println("  genkeys --privateFile=priv.pem --publicFile=pub.pem")
+	logger := c.Logger()
+	logger.Println("genkeys - command create private and public key files for JWT generation")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --privateFile - specify filename for private key (default is private.pem)")
+	logger.Println("  --publicFile - specify filename for public key (default is public.pem)")
+	logger.Println("example:")
+	logger.Println("  genkeys --privateFile=priv.pem --publicFile=pub.pem")
 }
 
 func (c *genKeysCommand) extractOptions() genKeysCommandOptions {

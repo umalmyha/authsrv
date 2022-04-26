@@ -1,8 +1,9 @@
 package valueobj
 
 import (
-	"errors"
 	"regexp"
+
+	"github.com/pkg/errors"
 )
 
 type SolidString struct {

@@ -5,66 +5,69 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
-	"github.com/umalmyha/authsrv/internal/errors"
+	"github.com/umalmyha/authsrv/pkg/ddd/errors"
 	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
 type isExistingUsernameFn func(string) (bool, error)
 
 func FromNewUserDto(dto NewUserDto, cfg valueobj.PasswordConfig, existFn isExistingUsernameFn) (*User, error) {
-	validation := errors.NewValidationResult()
+	validation := errors.NewValidation()
 
 	if dto.Username == "" {
-		validation.Add(
-			errors.NewInvariantViolationError("username is mandatory", "username"),
+		validation.AddViolation(
+			errors.NewInvariantViolation("username is mandatory", "username", errors.ViolationSeverityErr),
 		)
 	} else {
 		if exist, err := existFn(dto.Username); err != nil {
-			return nil, err
+			return nil, pkgerrors.Wrap(err, "failed to check user existence")
 		} else if exist {
-			validation.Add(
-				errors.NewInvariantViolationError(fmt.Sprintf("user with username '%s' already exists", dto.Username), "username"),
+			validation.AddViolation(
+				errors.NewInvariantViolation(fmt.Sprintf("user with username '%s' already exists", dto.Username), "username", errors.ViolationSeverityErr),
 			)
 		}
 	}
 
 	username, err := valueobj.NewSolidString(dto.Username)
 	if err != nil {
-		validation.Add(
-			errors.NewInvariantViolationError(err.Error(), "username"),
+		validation.AddViolation(
+			errors.NewInvariantViolation(err.Error(), "username", errors.ViolationSeverityErr),
 		)
 	}
 
 	email, err := valueobj.NewNilEmailFromPtr(dto.Email)
 	if err != nil {
-		validation.Add(
-			errors.NewInvariantViolationError(
+		validation.AddViolation(
+			errors.NewInvariantViolation(
 				fmt.Sprintf("Wrong email provided '%s'. Please, use format myemail@example.com", *dto.Email),
 				"email",
+				errors.ViolationSeverityErr,
 			),
 		)
 	}
 
 	if dto.Password != dto.ConfirmPassword {
-		validation.Add(
-			errors.NewInvariantViolationError("passwords don't match", "confirmPassword"),
+		validation.AddViolation(
+			errors.NewInvariantViolation("passwords don't match", "confirmPassword", errors.ViolationSeverityErr),
 		)
 	}
 
 	password, err := valueobj.GeneratePassword(dto.Password, cfg)
 	if err != nil {
-		validation.Add(
-			errors.NewInvariantViolationError(
+		validation.AddViolation(
+			errors.NewInvariantViolation(
 				fmt.Sprintf(err.Error()),
 				"password",
+				errors.ViolationSeverityErr,
 			),
 		)
 	}
 
-	if validation.Failed() {
-		return nil, validation.Error()
+	if validation.HasError() {
+		return nil, pkgerrors.Wrap(validation.Err(), "validation failed on user creation")
 	}
 
 	return &User{
@@ -85,12 +88,12 @@ func FromNewUserDto(dto NewUserDto, cfg valueobj.PasswordConfig, existFn isExist
 func fromDbDtos(user UserDto, roleIds []valueobj.RoleId, tokens []*refresh.RefreshToken, auth valueobj.UserAuth) (*User, error) {
 	username, err := valueobj.NewSolidString(user.Username)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrors.Wrap(err, "failed to build username")
 	}
 
 	email, err := valueobj.NewNilEmailFromPtr(user.Email)
 	if err != nil {
-		return nil, err
+		return nil, pkgerrors.Wrap(err, "failed to build user email")
 	}
 
 	return &User{

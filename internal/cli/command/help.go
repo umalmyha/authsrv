@@ -1,13 +1,17 @@
 package command
 
-import "fmt"
+import (
+	"log"
+)
 
 type helpCommand struct {
+	*LoggingCommand
 	execs []Executor
 }
 
-func NewHelpCommand() Executor {
+func NewHelpCommand(logger *log.Logger) Executor {
 	return &helpCommand{
+		LoggingCommand: &LoggingCommand{logger: logger},
 		execs: []Executor{
 			&createUserCommand{},
 			&createScopeCommand{},
@@ -27,11 +31,12 @@ func (c *helpCommand) Run() error {
 }
 
 func (c *helpCommand) Help() {
-	fmt.Println("--- Auth server CLI tool ---")
-	fmt.Println("Available commands:")
-	fmt.Println()
+	logger := c.Logger()
+	logger.Println("--- Auth server CLI tool ---")
+	logger.Println("Available commands:")
+	logger.Println()
 	for _, exec := range c.execs {
 		exec.Help()
-		fmt.Println()
+		logger.Println()
 	}
 }

@@ -1,9 +1,9 @@
 package valueobj
 
 import (
-	"errors"
-	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/umalmyha/authsrv/pkg/helpers"
 	"golang.org/x/crypto/bcrypt"
@@ -25,11 +25,11 @@ func GeneratePassword(password string, cfg PasswordConfig) (Password, error) {
 	}
 
 	if cfg.max != 0 && len(password) > cfg.max {
-		return p, fmt.Errorf("maximum length is %d characters", cfg.max)
+		return p, errors.Errorf("maximum length is %d characters", cfg.max)
 	}
 
 	if len(password) < cfg.min {
-		return p, fmt.Errorf("minimum length is %d characters", cfg.min)
+		return p, errors.Errorf("minimum length is %d characters", cfg.min)
 	}
 
 	if cfg.hasDigit && !helpers.HasDigit(password) {

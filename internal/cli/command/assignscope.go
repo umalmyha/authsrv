@@ -2,16 +2,17 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 )
 
 type assignScopeCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -21,9 +22,10 @@ type assignScopeCommandOptions struct {
 	help  bool
 }
 
-func NewAssignScopeCommand(args args.ParsedArgs) Executor {
+func NewAssignScopeCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &assignScopeCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -57,12 +59,6 @@ func (c *assignScopeCommand) Run() error {
 	}
 	defer db.Close()
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -70,20 +66,22 @@ func (c *assignScopeCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("scope '%s' is assigned to role %s successfully", scopeName, roleName)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("scope '%s' is assigned to role %s successfully", scopeName, roleName)
+	logger.Println()
 
 	return nil
 }
 
 func (c *assignScopeCommand) Help() {
-	fmt.Println("assignscope - command assigns scope to role")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --scope - specify scope name")
-	fmt.Println("  --to - specify role name")
-	fmt.Println("example:")
-	fmt.Println("  assignscope --scope=scope1 --to=role1")
+	logger := c.Logger()
+	logger.Println("assignscope - command assigns scope to role")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --scope - specify scope name")
+	logger.Println("  --to - specify role name")
+	logger.Println("example:")
+	logger.Println("  assignscope --scope=scope1 --to=role1")
 }
 
 func (c *assignScopeCommand) extractOptions() assignScopeCommandOptions {

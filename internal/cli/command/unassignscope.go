@@ -2,16 +2,17 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 )
 
 type unassignScopeCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -21,9 +22,10 @@ type unassignScopeCommandOptions struct {
 	help  bool
 }
 
-func NewUnassignScopeCommand(args args.ParsedArgs) Executor {
+func NewUnassignScopeCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &unassignScopeCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -57,12 +59,6 @@ func (c *unassignScopeCommand) Run() error {
 	}
 	defer db.Close()
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -70,20 +66,22 @@ func (c *unassignScopeCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("scope '%s' is unassigned from role %s successfully", scopeName, roleName)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("scope '%s' is unassigned from role %s successfully", scopeName, roleName)
+	logger.Println()
 
 	return nil
 }
 
 func (c *unassignScopeCommand) Help() {
-	fmt.Println("unassignscope - command unassigns scope from role")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --scope - specify scope name")
-	fmt.Println("  --from - specify role name")
-	fmt.Println("example:")
-	fmt.Println("  unassignscope --scope=scope1 --from=role1")
+	logger := c.Logger()
+	logger.Println("unassignscope - command unassigns scope from role")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --scope - specify scope name")
+	logger.Println("  --from - specify role name")
+	logger.Println("example:")
+	logger.Println("  unassignscope --scope=scope1 --from=role1")
 }
 
 func (c *unassignScopeCommand) extractOptions() unassignScopeCommandOptions {

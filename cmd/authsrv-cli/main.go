@@ -20,27 +20,31 @@ func main() {
 
 func run() error {
 	args := args.Parse()
+	logger, err := infra.NewCliZapLogger()
+	if err != nil {
+		return err
+	}
 
 	var cmd command.Executor
 	switch args.At(0) {
 	case "createuser":
-		cmd = command.NewCreateUserCommand(args)
+		cmd = command.NewCreateUserCommand(args, logger)
 	case "createscope":
-		cmd = command.NewCreateScopeCommand(args)
+		cmd = command.NewCreateScopeCommand(args, logger)
 	case "createrole":
-		cmd = command.NewCreateRoleCommand(args)
+		cmd = command.NewCreateRoleCommand(args, logger)
 	case "assignscope":
-		cmd = command.NewAssignScopeCommand(args)
+		cmd = command.NewAssignScopeCommand(args, logger)
 	case "unassignscope":
-		cmd = command.NewUnassignScopeCommand(args)
+		cmd = command.NewUnassignScopeCommand(args, logger)
 	case "assignrole":
-		cmd = command.NewAssignRoleCommand(args)
+		cmd = command.NewAssignRoleCommand(args, logger)
 	case "unassignrole":
-		cmd = command.NewUnassignRoleCommand(args)
+		cmd = command.NewUnassignRoleCommand(args, logger)
 	case "genkeys":
-		cmd = command.NewGenKeysCommand(args)
+		cmd = command.NewGenKeysCommand(args, logger)
 	default:
-		cmd = command.NewHelpCommand()
+		cmd = command.NewHelpCommand(logger)
 	}
 
 	return cmd.Run()

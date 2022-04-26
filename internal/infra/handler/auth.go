@@ -1,14 +1,16 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	"github.com/umalmyha/authsrv/internal/business/user"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
-	"github.com/umalmyha/authsrv/internal/service"
-	"github.com/umalmyha/authsrv/pkg/web"
+	"github.com/umalmyha/authsrv/internal/infra/service"
+	"github.com/umalmyha/authsrv/pkg/web/request"
+	"github.com/umalmyha/authsrv/pkg/web/response"
 )
 
 type AuthHandler struct {
@@ -25,7 +27,7 @@ func NewAuthHandler(authSrv *service.AuthService, rfrCfg valueobj.RefreshTokenCo
 
 func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) error {
 	var nu user.NewUserDto
-	if err := web.JsonReqBody(r, nu); err != nil {
+	if err := request.JsonReqBody(r, nu); err != nil {
 		return err
 	}
 
@@ -34,11 +36,11 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) error {
 	var signin user.SigninDto
-	if err := web.JsonReqBody(r, signin); err != nil {
+	if err := request.JsonReqBody(r, signin); err != nil {
 		return err
 	}
 
-	username, password, err := web.BasicAuth(r)
+	username, password, err := request.BasicAuth(r)
 	if err != nil {
 		return err
 	}
@@ -46,7 +48,7 @@ func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) error {
 	signin.Password = password
 
 	refreshCookie := h.rfrCfg.CookieName()
-	if web.GetCookieValue(r, refreshCookie) != "" {
+	if request.GetCookieValue(r, refreshCookie) != "" {
 		return errors.New("refresh token cookie is set, logout first or refresh session")
 	}
 
@@ -61,32 +63,32 @@ func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) error {
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	// TODO: Find user: inject to context from JWT in middleware?
 	var logout user.LogoutDto
-	if err := web.JsonReqBody(r, &logout); err != nil {
+	if err := request.JsonReqBody(r, &logout); err != nil {
 		return err
 	}
 
 	rfrTokenCookie := h.rfrCfg.CookieName()
 
-	refreshTokenId := web.GetCookieValue(r, rfrTokenCookie)
+	refreshTokenId := request.GetCookieValue(r, rfrTokenCookie)
 	logout.RefreshTokenId = refreshTokenId
 
 	if err := h.authSrv.Logout(r.Context(), logout); err != nil {
 		return err
 	}
 
-	web.DeleteCookie(r, w, rfrTokenCookie)
+	response.DeleteCookie(r, w, rfrTokenCookie)
 	return nil
 }
 
 func (h *AuthHandler) RefreshSession(w http.ResponseWriter, r *http.Request) error {
 	// TODO: Find user: inject to context from JWT in middleware?
-	refreshTokenId := web.GetCookieValue(r, h.rfrCfg.CookieName())
+	refreshTokenId := request.GetCookieValue(r, h.rfrCfg.CookieName())
 	if refreshTokenId == "" {
 		return errors.New("refresh token is not provided")
 	}
 
 	var rfr user.RefreshDto
-	if err := web.JsonReqBody(r, &rfr); err != nil {
+	if err := request.JsonReqBody(r, &rfr); err != nil {
 		return err
 	}
 	rfr.RefreshTokenId = refreshTokenId
@@ -107,7 +109,7 @@ func (h *AuthHandler) respondTokens(w http.ResponseWriter, jwt valueobj.Jwt, rfr
 		MaxAge:   rfrToken.UnixExpiresIn(),
 		HttpOnly: true,
 	}
-	web.SetCookie(w, cookie)
+	response.SetCookie(w, cookie)
 
 	signinData := struct {
 		AccessToken string `json:"accessToken"`
@@ -119,7 +121,7 @@ func (h *AuthHandler) respondTokens(w http.ResponseWriter, jwt valueobj.Jwt, rfr
 		TokenType:   jwt.TokenType(),
 	}
 
-	if err := web.RespondJson(w, http.StatusOK, signinData); err != nil {
+	if err := response.RespondJson(w, http.StatusOK, signinData); err != nil {
 		return err
 	}
 

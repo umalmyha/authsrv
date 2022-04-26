@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"errors"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
@@ -30,23 +30,16 @@ func (repo *Repository) Update(user *User) error {
 
 func (repo *Repository) FindByUsername(ctx context.Context, username string) (*User, error) {
 	notPresentFn := func() (UserDto, error) {
-		var dto UserDto
-		dto, err := NewUserDao(repo.uow.ExtContext()).FindByUsername(ctx, username)
-		if err != nil {
-			return dto, err
-		}
-		return dto, nil
+		return NewUserDao(repo.uow.ExtContext()).FindByUsername(ctx, username)
 	}
 
-	user, err := repo.uow.users.Find(func(user UserDto) bool {
-		return user.Username == username
-	}).IfNotPresent(notPresentFn)
+	user, err := repo.uow.users.Find(func(user UserDto) bool { return user.Username == username }).IfNotPresent(notPresentFn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read user aggregate")
 	}
 
 	if !user.IsPresent() {
-		return nil, errors.New(fmt.Sprintf("user %s doesn't exist", username))
+		return nil, errors.Errorf("user %s doesn't exist", username)
 	}
 
 	userAuth, err := NewUserAuthDao(repo.uow.ExtContext()).FindAllForUser(ctx, user.Id)
@@ -61,7 +54,7 @@ func (repo *Repository) FindByUsername(ctx context.Context, username string) (*U
 
 	u, err := repo.buildUser(user, userAuth, tokens)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build user from db DTOs")
 	}
 
 	return u, repo.uow.RegisterClean(u)
@@ -85,7 +78,7 @@ func (repo *Repository) buildUser(user UserDto, userAuthDto []UserAuthDto, token
 
 		roleIdent, err := valueobj.NewRoleId(roleId)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to build role identifier")
 		}
 		roleIds = append(roleIds, roleIdent)
 	}

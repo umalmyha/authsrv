@@ -2,8 +2,8 @@ package refresh
 
 import (
 	"context"
-	"errors"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-redis/redis/v8"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
@@ -27,11 +27,11 @@ func (dao *RefreshTokenDao) FindAllForUser(ctx context.Context, userId string) (
 		if errors.Is(err, redis.Nil) {
 			return tokens, nil
 		}
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read all tokens for user")
 	}
 
 	if err := dbredis.DecodeGob([]byte(tokenStr), &tokens); err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to deserialize tokens from gob format: %s", err.Error()))
+		return nil, errors.Wrap(err, "failed to deserialize tokens from gob format")
 	}
 	return tokens, nil
 }

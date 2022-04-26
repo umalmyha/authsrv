@@ -2,18 +2,19 @@ package command
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/umalmyha/authsrv/internal/business/user"
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/input"
 	"github.com/umalmyha/authsrv/internal/infra"
-	"github.com/umalmyha/authsrv/internal/service"
+	"github.com/umalmyha/authsrv/internal/infra/service"
 	dbredis "github.com/umalmyha/authsrv/pkg/database/redis"
 )
 
 type createUserCommand struct {
+	*LoggingCommand
 	args args.ParsedArgs
 }
 
@@ -24,9 +25,10 @@ type createUserCommandOptions struct {
 	isSuper  bool
 }
 
-func NewCreateUserCommand(args args.ParsedArgs) Executor {
+func NewCreateUserCommand(args args.ParsedArgs, logger *log.Logger) Executor {
 	return &createUserCommand{
-		args: args,
+		LoggingCommand: &LoggingCommand{logger: logger},
+		args:           args,
 	}
 }
 
@@ -70,12 +72,6 @@ func (c *createUserCommand) Run() error {
 		return err
 	}
 
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
-	defer logger.Sync()
-
 	jwtCfg, err := infra.JwtConfig()
 	if err != nil {
 		return err
@@ -105,21 +101,23 @@ func (c *createUserCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("user '%s' is created successfully", username)
-	fmt.Println()
+	logger := c.Logger()
+	logger.Printf("user '%s' is created successfully", username)
+	logger.Println()
 
 	return nil
 }
 
 func (c *createUserCommand) Help() {
-	fmt.Println("createuser - command creates new user")
-	fmt.Println("options:")
-	fmt.Println("  --help - show help")
-	fmt.Println("  --username - specify username")
-	fmt.Println("  --password - specify password")
-	fmt.Println("  --issuper - create superuser")
-	fmt.Println("example:")
-	fmt.Println("  createuser --usename=user1 --password=initial1 --issuper")
+	logger := c.Logger()
+	logger.Println("createuser - command creates new user")
+	logger.Println("options:")
+	logger.Println("  --help - show help")
+	logger.Println("  --username - specify username")
+	logger.Println("  --password - specify password")
+	logger.Println("  --issuper - create superuser")
+	logger.Println("example:")
+	logger.Println("  createuser --usename=user1 --password=initial1 --issuper")
 }
 
 func (c *createUserCommand) extractOptions() createUserCommandOptions {

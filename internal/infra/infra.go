@@ -2,11 +2,13 @@ package infra
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
@@ -29,25 +31,26 @@ func NewZapProductionLogger(service string) (*zap.SugaredLogger, error) {
 
 	logger, err := config.Build()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build zap logger")
 	}
 
 	return logger.Sugar(), nil
 }
 
-func NewCliZapLogger() (*zap.SugaredLogger, error) {
+func NewCliZapLogger() (*log.Logger, error) {
 	config := zap.NewProductionConfig()
 	config.DisableCaller = true
 	config.DisableStacktrace = true
 	config.Encoding = "console"
 	config.EncoderConfig.EncodeTime = func(t time.Time, pae zapcore.PrimitiveArrayEncoder) {}
 	config.EncoderConfig.EncodeLevel = func(l zapcore.Level, pae zapcore.PrimitiveArrayEncoder) {}
+
 	logger, err := config.Build()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build zap logger")
 	}
 
-	return logger.Sugar(), nil
+	return zap.NewStdLog(logger), nil
 }
 
 func LoadEnv() error {
@@ -67,7 +70,7 @@ func JwtConfig() (valueobj.JwtConfig, error) {
 
 	privateKey, err := os.ReadFile(privateKeyFile)
 	if err != nil {
-		return cfg, err
+		return cfg, errors.Wrap(err, "failed to read private key file")
 	}
 
 	algorithm := os.Getenv("AUTHSRV_JWT_ALGORITHM")
@@ -76,7 +79,7 @@ func JwtConfig() (valueobj.JwtConfig, error) {
 	ttlStr := os.Getenv("AUTHSRV_JWT_TTL_MINUTES")
 	ttl, err := time.ParseDuration(fmt.Sprintf("%sm", ttlStr))
 	if err != nil {
-		return cfg, err
+		return cfg, errors.Wrap(err, "failed to parse jwt ttl in specified format")
 	}
 
 	return valueobj.NewJwtConfig(algorithm, issuer, string(privateKey), ttl)
@@ -90,7 +93,7 @@ func PasswordConfig() (valueobj.PasswordConfig, error) {
 
 	minLength, err := strconv.Atoi(minLengthStr)
 	if err != nil {
-		return valueobj.PasswordConfig{}, err
+		return valueobj.PasswordConfig{}, errors.Wrap(err, "failed to parse password min length, check if number is provided")
 	}
 
 	maxLengthStr := os.Getenv("AUTHSRV_PASSWORD_MAX_LENGTH")
@@ -100,7 +103,7 @@ func PasswordConfig() (valueobj.PasswordConfig, error) {
 
 	maxLength, err := strconv.Atoi(maxLengthStr)
 	if err != nil {
-		return valueobj.PasswordConfig{}, err
+		return valueobj.PasswordConfig{}, errors.Wrap(err, "failed to parse password max length, check if number is provided")
 	}
 
 	hasDigit := false
@@ -120,13 +123,13 @@ func RefreshTokenConfig() (valueobj.RefreshTokenConfig, error) {
 	ttlStr := os.Getenv("AUTHSRV_REFRESH_TOKEN_TTL_HOURS")
 	ttl, err := time.ParseDuration(fmt.Sprintf("%sh", ttlStr))
 	if err != nil {
-		return valueobj.RefreshTokenConfig{}, err
+		return valueobj.RefreshTokenConfig{}, errors.Wrap(err, "failed to parse refresh token ttl in specified format")
 	}
 
 	maxCountStr := os.Getenv("AUTHSRV_REFRESH_TOKEN_MAX_COUNT")
 	maxCount, err := strconv.Atoi(maxCountStr)
 	if err != nil {
-		return valueobj.RefreshTokenConfig{}, err
+		return valueobj.RefreshTokenConfig{}, errors.Wrap(err, "failed to parse refresh tokens max count, check if number is provided")
 	}
 
 	cookieName := os.Getenv("AUTHSRV_REFRESH_TOKEN_COOKIE_NAME")
@@ -151,7 +154,7 @@ func ConnectToDb() (*sqlx.DB, error) {
 
 	db, err := rdb.Connect(ctx, dbConfig)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("database connection error: %s", err.Error()))
+		return nil, errors.Wrap(err, "database connection failed")
 	}
 
 	return db, nil
@@ -160,17 +163,17 @@ func ConnectToDb() (*sqlx.DB, error) {
 func RedisOptions() (*redis.Options, error) {
 	poolSize, err := strconv.Atoi(os.Getenv("AUTHSRV_CACHE_POOL_SIZE"))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse cache pool size")
 	}
 
 	readTimeout, err := time.ParseDuration(fmt.Sprintf("%ss", os.Getenv("AUTHSRV_READ_TIMEOUT_SECONDS")))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse cache read timeout")
 	}
 
 	writeTimeout, err := time.ParseDuration(fmt.Sprintf("%ss", os.Getenv("AUTHSRV_WRITE_TIMEOUT_SECONDS")))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse cache write timeout")
 	}
 
 	return &redis.Options{
