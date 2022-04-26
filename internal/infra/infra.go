@@ -3,7 +3,6 @@ package infra
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -37,7 +36,7 @@ func NewZapProductionLogger(service string) (*zap.SugaredLogger, error) {
 	return logger.Sugar(), nil
 }
 
-func NewCliZapLogger() (*log.Logger, error) {
+func NewCliZapLogger() (*zap.SugaredLogger, error) {
 	config := zap.NewProductionConfig()
 	config.DisableCaller = true
 	config.DisableStacktrace = true
@@ -50,7 +49,7 @@ func NewCliZapLogger() (*log.Logger, error) {
 		return nil, errors.Wrap(err, "failed to build zap logger")
 	}
 
-	return zap.NewStdLog(logger), nil
+	return logger.Sugar(), nil
 }
 
 func LoadEnv() error {

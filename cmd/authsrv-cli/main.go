@@ -1,29 +1,33 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/umalmyha/authsrv/internal/cli/args"
 	"github.com/umalmyha/authsrv/internal/cli/command"
 	"github.com/umalmyha/authsrv/internal/infra"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger, err := infra.NewCliZapLogger()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Sync()
+
+	stdlogger := zap.NewStdLog(logger.Desugar())
 	if err := infra.LoadEnv(); err != nil {
-		fmt.Printf("error occured on loading environment variables: %s", err.Error())
+		stdlogger.Printf("error occured on loading environment variables: %s", err.Error())
 	}
 
-	if err := run(); err != nil {
-		fmt.Printf("error occurred during command execution: %s", err.Error())
+	if err := run(stdlogger); err != nil {
+		stdlogger.Printf("error occurred during command execution: %s", err.Error())
 	}
 }
 
-func run() error {
+func run(logger *log.Logger) error {
 	args := args.Parse()
-	logger, err := infra.NewCliZapLogger()
-	if err != nil {
-		return err
-	}
 
 	var cmd command.Executor
 	switch args.At(0) {
