@@ -2,7 +2,6 @@ package rdb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -31,6 +30,6 @@ func connect(ctx context.Context, cfg *config) (*sqlx.DB, error) {
 	case DatabasePostgres:
 		return connectToPostgesql(ctx, cfg)
 	default:
-		return nil, errors.New(fmt.Sprintf("unsupported database - %s", cfg.database))
+		return nil, fmt.Errorf("unsupported database - %s", cfg.database)
 	}
 }

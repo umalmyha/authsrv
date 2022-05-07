@@ -8,7 +8,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/umalmyha/authsrv/internal/business/refresh"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
-	"github.com/umalmyha/authsrv/pkg/ddd/errors"
+	"github.com/umalmyha/authsrv/pkg/errors"
 	"github.com/umalmyha/authsrv/pkg/helpers"
 )
 
@@ -18,56 +18,63 @@ func FromNewUserDto(dto NewUserDto, cfg valueobj.PasswordConfig, existFn isExist
 	validation := errors.NewValidation()
 
 	if dto.Username == "" {
-		validation.AddViolation(
-			errors.NewInvariantViolation("username is mandatory", "username", errors.ViolationSeverityErr),
+		validation.Add(
+			errors.NewBusinessErr("username is mandatory", "username", errors.ViolationSeverityErr, errors.CodeValidationFailed),
 		)
 	} else {
 		if exist, err := existFn(dto.Username); err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to check user existence")
 		} else if exist {
-			validation.AddViolation(
-				errors.NewInvariantViolation(fmt.Sprintf("user with username '%s' already exists", dto.Username), "username", errors.ViolationSeverityErr),
+			validation.Add(
+				errors.NewBusinessErr(
+					fmt.Sprintf("user with username '%s' already exists", dto.Username),
+					"username",
+					errors.ViolationSeverityErr,
+					errors.CodeValidationFailed,
+				),
 			)
 		}
 	}
 
 	username, err := valueobj.NewSolidString(dto.Username)
 	if err != nil {
-		validation.AddViolation(
-			errors.NewInvariantViolation(err.Error(), "username", errors.ViolationSeverityErr),
+		validation.Add(
+			errors.NewBusinessErr(err.Error(), "username", errors.ViolationSeverityErr, errors.CodeValidationFailed),
 		)
 	}
 
 	email, err := valueobj.NewNilEmailFromPtr(dto.Email)
 	if err != nil {
-		validation.AddViolation(
-			errors.NewInvariantViolation(
+		validation.Add(
+			errors.NewBusinessErr(
 				fmt.Sprintf("Wrong email provided '%s'. Please, use format myemail@example.com", *dto.Email),
 				"email",
 				errors.ViolationSeverityErr,
+				errors.CodeValidationFailed,
 			),
 		)
 	}
 
 	if dto.Password != dto.ConfirmPassword {
-		validation.AddViolation(
-			errors.NewInvariantViolation("passwords don't match", "confirmPassword", errors.ViolationSeverityErr),
+		validation.Add(
+			errors.NewBusinessErr("passwords don't match", "confirmPassword", errors.ViolationSeverityErr, errors.CodeValidationFailed),
 		)
 	}
 
 	password, err := valueobj.GeneratePassword(dto.Password, cfg)
 	if err != nil {
-		validation.AddViolation(
-			errors.NewInvariantViolation(
+		validation.Add(
+			errors.NewBusinessErr(
 				fmt.Sprintf(err.Error()),
 				"password",
 				errors.ViolationSeverityErr,
+				errors.CodeValidationFailed,
 			),
 		)
 	}
 
 	if validation.HasError() {
-		return nil, pkgerrors.Wrap(validation.Err(), "validation failed on user creation")
+		return nil, pkgerrors.Wrap(validation.RaiseValidationErr(errors.ViolationSeverityErr), "validation failed on user creation")
 	}
 
 	return &User{

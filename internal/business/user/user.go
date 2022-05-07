@@ -136,32 +136,31 @@ func (u *User) DiscardRefreshToken(logout LogoutDto) error {
 	return nil
 }
 
-func (u *User) RefreshSession(rfr RefreshDto, now time.Time) error {
-	// TODO: think of reusage of error handling
+func (u *User) RefreshSession(rfr RefreshDto, now time.Time, cfg valueobj.JwtConfig) (valueobj.Jwt, error) {
 	if rfr.RefreshTokenId == "" {
-		return errors.New("refresh token id can't be initial")
+		return valueobj.Jwt{}, errors.New("refresh token id can't be initial")
 	}
 
 	if rfr.Fingerprint == "" {
-		return errors.New("fingerprint must be provided")
+		return valueobj.Jwt{}, errors.New("fingerprint must be provided")
 	}
 
 	tokenElem := u.findRefreshTokenElemById(rfr.RefreshTokenId)
 	if tokenElem == nil {
-		return errors.Errorf("provided refresh token doesn't exist or doesn't belong to user %s", u.username)
+		return valueobj.Jwt{}, errors.Errorf("provided refresh token doesn't exist or doesn't belong to user %s", u.username)
 	}
-	u.tokens.Remove(tokenElem)
 
 	token, _ := tokenElem.Value.(*refresh.RefreshToken)
-	if token.Fingerprint() != rfr.RefreshTokenId {
-		return errors.New("provided refresh token doesn't exist or doesn't belong to user %s")
+	if token.Fingerprint() != rfr.Fingerprint {
+		return valueobj.Jwt{}, errors.New("provided fingerprint doesn't belong to provided refresh token")
 	}
 
-	if token.ExpiresAt().Before(now) {
-		return errors.New("provided refresh token doesn't exist or doesn't belong to user %s")
-	}
+	u.tokens.Remove(tokenElem)
 
-	return nil
+	if err := token.VerifyNotExpired(now); err != nil {
+		return valueobj.Jwt{}, err
+	}
+	return u.GenerateJwt(now, cfg)
 }
 
 func (u *User) VerifyPassword(password string) (bool, error) {

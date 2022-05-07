@@ -25,6 +25,16 @@ func RespondJson(w http.ResponseWriter, statusCode int, data any) error {
 	return nil
 }
 
+func RespondTextPlain(w http.ResponseWriter, statusCode int, data []byte) error {
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "text/plain")
+	if _, err := w.Write(data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func RespondStatus(w http.ResponseWriter, statusCode int) {
 	w.WriteHeader(statusCode)
 }

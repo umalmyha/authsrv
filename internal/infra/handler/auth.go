@@ -9,6 +9,7 @@ import (
 	"github.com/umalmyha/authsrv/internal/business/user"
 	valueobj "github.com/umalmyha/authsrv/internal/business/value-object"
 	"github.com/umalmyha/authsrv/internal/infra/service"
+	webErrs "github.com/umalmyha/authsrv/pkg/web/errors"
 	"github.com/umalmyha/authsrv/pkg/web/request"
 	"github.com/umalmyha/authsrv/pkg/web/response"
 )
@@ -57,7 +58,15 @@ func (h *AuthHandler) Signin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return h.respondTokens(w, jwt, rfrToken)
+	cookie := &http.Cookie{
+		Name:     h.rfrCfg.CookieName(),
+		Value:    rfrToken.Id(),
+		MaxAge:   rfrToken.UnixExpiresIn(),
+		HttpOnly: true,
+	}
+	response.SetCookie(w, cookie)
+
+	return h.respondJwt(w, jwt)
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
@@ -94,23 +103,19 @@ func (h *AuthHandler) RefreshSession(w http.ResponseWriter, r *http.Request) err
 	rfr.RefreshTokenId = refreshTokenId
 
 	// TODO: Think of allowed errors
-	jwt, rfrToken, err := h.authSrv.RefreshSession(r.Context(), rfr)
+	jwt, err := h.authSrv.RefreshSession(r.Context(), rfr)
 	if err != nil {
+		if errors.Is(err, refresh.RefreshTokenExpiredErr) {
+			response.DeleteCookie(r, w, h.rfrCfg.CookieName())
+			return response.RespondJson(w, http.StatusBadRequest, webErrs.HttpBadRequestErr("application/json", err))
+		}
 		return err
 	}
 
-	return h.respondTokens(w, jwt, rfrToken)
+	return h.respondJwt(w, jwt)
 }
 
-func (h *AuthHandler) respondTokens(w http.ResponseWriter, jwt valueobj.Jwt, rfrToken *refresh.RefreshToken) error {
-	cookie := &http.Cookie{
-		Name:     h.rfrCfg.CookieName(),
-		Value:    rfrToken.Id(),
-		MaxAge:   rfrToken.UnixExpiresIn(),
-		HttpOnly: true,
-	}
-	response.SetCookie(w, cookie)
-
+func (h *AuthHandler) respondJwt(w http.ResponseWriter, jwt valueobj.Jwt) error {
 	signinData := struct {
 		AccessToken string `json:"accessToken"`
 		ExpiresAt   int64  `json:"expiresAt"`
@@ -120,10 +125,5 @@ func (h *AuthHandler) respondTokens(w http.ResponseWriter, jwt valueobj.Jwt, rfr
 		ExpiresAt:   jwt.ExpiresAt(),
 		TokenType:   jwt.TokenType(),
 	}
-
-	if err := response.RespondJson(w, http.StatusOK, signinData); err != nil {
-		return err
-	}
-
-	return nil
+	return response.RespondJson(w, http.StatusOK, signinData)
 }

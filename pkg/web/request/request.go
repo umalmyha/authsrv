@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
-
-	"github.com/go-chi/chi/v5"
 )
 
 func BasicAuth(r *http.Request) (string, string, error) {
@@ -18,7 +16,7 @@ func BasicAuth(r *http.Request) (string, string, error) {
 }
 
 func UrlParam(r *http.Request, name string) string {
-	return chi.URLParam(r, name)
+	return r.URL.Query().Get(name)
 }
 
 func JsonReqBody(r *http.Request, to interface{}) error {

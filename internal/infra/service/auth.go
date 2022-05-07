@@ -123,40 +123,28 @@ func (srv *AuthService) Logout(ctx context.Context, logout user.LogoutDto) error
 	return user.DiscardRefreshToken(logout)
 }
 
-func (srv *AuthService) RefreshSession(ctx context.Context, rfr user.RefreshDto) (jwt valueobj.Jwt, rfrToken *refresh.RefreshToken, err error) {
+func (srv *AuthService) RefreshSession(ctx context.Context, rfr user.RefreshDto) (valueobj.Jwt, error) {
 	uow := user.NewUnitOfWork(srv.db, srv.rdb)
 	repo := user.NewRepository(uow)
-	defer func() {
-		// TODO: Use pkg/errors for wrapping
-		if txErr := uow.Flush(ctx); txErr != nil {
-			err = txErr
-		}
-	}()
 
-	user, err := repo.FindByUsername(ctx, rfr.Username)
+	usr, err := repo.FindByUsername(ctx, rfr.Username)
 	if err != nil {
-		return jwt, rfrToken, errors.Wrap(err, "failed to find user in repository")
+		return valueobj.Jwt{}, errors.Wrap(err, "failed to find user in repository")
 	}
 
-	if user == nil {
-		return jwt, rfrToken, errors.Errorf("user %s doesn't exist", rfr.Username)
+	if usr == nil {
+		return valueobj.Jwt{}, errors.Errorf("user %s doesn't exist", rfr.Username)
 	}
 
 	now := time.Now().UTC()
-
-	if err = user.RefreshSession(rfr, now); err != nil {
-		return jwt, rfrToken, errors.Wrap(err, "failed to refresh session")
+	jwt, err := usr.RefreshSession(rfr, now, srv.jwtCfg)
+	if err != nil && !errors.Is(err, refresh.RefreshTokenExpiredErr) {
+		return jwt, errors.Wrap(err, "failed to refresh session")
 	}
 
-	jwt, err = user.GenerateJwt(now, srv.jwtCfg)
-	if err != nil {
-		return jwt, rfrToken, errors.Wrap(err, "failed to generate access token")
+	if flushErr := uow.Flush(ctx); flushErr != nil {
+		return valueobj.Jwt{}, flushErr
 	}
 
-	rfrToken, err = user.GenerateRefreshToken(rfr.Fingerprint, now, srv.refreshCfg)
-	if err != nil {
-		return jwt, rfrToken, errors.Wrap(err, "failed to generate refresh token")
-	}
-
-	return jwt, rfrToken, nil
+	return jwt, err
 }
