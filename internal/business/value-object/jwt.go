@@ -1,6 +1,7 @@
 package valueobj
 
 import (
+	"crypto/rsa"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,12 +14,6 @@ type Jwt struct {
 	signed    string
 	tokenType string
 	expiresAt time.Time
-}
-
-type JwtClaims struct {
-	jwt.RegisteredClaims
-	Roles  []string `json:"roles"`
-	Scopes []string `json:"scopes"`
 }
 
 func NewJwt(user string, issuedAt time.Time, roles []string, scopes []string, cfg JwtConfig) (Jwt, error) {
@@ -53,8 +48,8 @@ func NewJwt(user string, issuedAt time.Time, roles []string, scopes []string, cf
 			IssuedAt:  jwt.NewNumericDate(issuedAt),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
-		Roles:  roles,
-		Scopes: scopes,
+		SubjRoles:  roles,
+		SubjScopes: scopes,
 	}
 
 	token := jwt.NewWithClaims(method, claims)
@@ -81,14 +76,33 @@ func (jwt Jwt) TokenType() string {
 	return jwt.tokenType
 }
 
+type JwtClaims struct {
+	jwt.RegisteredClaims
+	SubjRoles  []string `json:"roles"`
+	SubjScopes []string `json:"scopes"`
+}
+
+func (c JwtClaims) Username() string {
+	return c.Subject
+}
+
+func (c JwtClaims) Roles() []string {
+	return c.SubjRoles
+}
+
+func (c JwtClaims) Scopes() []string {
+	return c.SubjScopes
+}
+
 type JwtConfig struct {
 	algorithm  string
 	issuer     string
-	privateKey string
+	privateKey *rsa.PrivateKey
+	publicKey  *rsa.PublicKey
 	ttl        time.Duration
 }
 
-func NewJwtConfig(alg, issuer, pkey string, ttl time.Duration) (JwtConfig, error) {
+func NewJwtConfig(alg string, issuer string, rsaPrivate *rsa.PrivateKey, rsaPublic *rsa.PublicKey, ttl time.Duration) (JwtConfig, error) {
 	var cfg JwtConfig
 
 	if jwt.GetSigningMethod(alg) == nil {
@@ -96,10 +110,15 @@ func NewJwtConfig(alg, issuer, pkey string, ttl time.Duration) (JwtConfig, error
 	}
 	cfg.algorithm = alg
 
-	if pkey == "" {
+	if rsaPrivate == nil {
 		return cfg, errors.New("private key can't be initial")
 	}
-	cfg.privateKey = pkey
+	cfg.privateKey = rsaPrivate
+
+	if rsaPublic == nil {
+		return cfg, errors.New("public key can't be initial")
+	}
+	cfg.publicKey = rsaPublic
 
 	if issuer == "" {
 		return cfg, errors.New("issuer can't be initial")
@@ -122,8 +141,12 @@ func (cfg JwtConfig) Issuer() string {
 	return cfg.issuer
 }
 
-func (cfg JwtConfig) PrivateKey() string {
+func (cfg JwtConfig) PrivateKey() *rsa.PrivateKey {
 	return cfg.privateKey
+}
+
+func (cfg JwtConfig) PublicKey() *rsa.PublicKey {
+	return cfg.publicKey
 }
 
 func (cfg JwtConfig) TimeToLive() time.Duration {

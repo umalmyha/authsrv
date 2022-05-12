@@ -11,23 +11,21 @@ import (
 	"github.com/umalmyha/authsrv/pkg/web/request"
 )
 
-type JwtParserFn func(string) (JwtAuthProvider, error)
+type JwtValidatorFn func(string) (AuthClaimsProvider, error)
 
-type JwtAuthProvider interface {
-	Subject() string
+type AuthClaimsProvider interface {
+	Username() string
 	Roles() []string
 	Scopes() []string
 }
 
-type ctxRolesKey string
-type ctxScopesKey string
+type ctxClaimsKey string
 type ctxUsernameKey string
 
-const CtxRoles ctxRolesKey = "user-roles"
-const CtxScopes ctxScopesKey = "user-scopes"
+const CtxClaims ctxClaimsKey = "claims"
 const CtxUsername ctxUsernameKey = "username"
 
-func JwtAuthentication(parserFn JwtParserFn) MiddlewareFn {
+func JwtAuthentication(validatorFn JwtValidatorFn) MiddlewareFn {
 	return func(nextFn HttpHandlerFn) HttpHandlerFn {
 		return func(w http.ResponseWriter, r *http.Request) error {
 			h := request.GetHeader(r, "Authorization")
@@ -40,15 +38,14 @@ func JwtAuthentication(parserFn JwtParserFn) MiddlewareFn {
 				return errors.Wrap(webErrs.HttpUnauthorizedErr, "incorrect authorization header, expected format 'Bearer <token>'")
 			}
 
-			jwtAuth, err := parserFn(parts[1])
+			jwtAuth, err := validatorFn(parts[1])
 			if err != nil {
 				return errors.Wrapf(webErrs.HttpUnauthorizedErr, "error occurred on parsing token - %v", err)
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, CtxUsername, jwtAuth.Subject())
-			ctx = context.WithValue(ctx, CtxRoles, jwtAuth.Roles())
-			ctx = context.WithValue(ctx, CtxScopes, jwtAuth.Scopes())
+			ctx = context.WithValue(ctx, CtxUsername, jwtAuth.Username())
+			ctx = context.WithValue(ctx, CtxClaims, jwtAuth)
 
 			return nextFn(w, r.WithContext(ctx))
 		}
@@ -60,12 +57,12 @@ func HasRoles(roles ...string) MiddlewareFn {
 		return func(w http.ResponseWriter, r *http.Request) error {
 			if len(roles) > 0 {
 				ctx := r.Context()
-				ctxRoles, ok := ctx.Value(CtxRoles).([]string)
+				claims, ok := ctx.Value(CtxClaims).(AuthClaimsProvider)
 				if !ok {
-					return errors.Wrap(webErrs.HttpInternalServerErr, "roles are missing in context, is jwt authentication middleware were applied?")
+					return errors.Wrap(webErrs.HttpInternalServerErr, "claims are missing in context, is jwt authentication middleware was applied?")
 				}
 
-				m := findMissingPrivileges(roles, ctxRoles)
+				m := findMissingPrivileges(roles, claims.Roles())
 				if len(m) > 0 {
 					return errors.Wrapf(webErrs.HttpForbiddenErr, "authorization failed, missing roles %v", m)
 				}
@@ -80,12 +77,12 @@ func HasScopes(scopes ...string) MiddlewareFn {
 		return func(w http.ResponseWriter, r *http.Request) error {
 			if len(scopes) > 0 {
 				ctx := r.Context()
-				ctxScopes, ok := ctx.Value(CtxScopes).([]string)
+				claims, ok := ctx.Value(CtxClaims).(AuthClaimsProvider)
 				if !ok {
-					return errors.Wrap(webErrs.HttpForbiddenErr, "scopes are missing in context, is jwt authentication middleware were applied?")
+					return errors.Wrap(webErrs.HttpForbiddenErr, "claims are missing in context, is jwt authentication middleware were applied?")
 				}
 
-				m := findMissingPrivileges(scopes, ctxScopes)
+				m := findMissingPrivileges(scopes, claims.Scopes())
 				if len(m) > 0 {
 					return errors.Wrapf(webErrs.HttpForbiddenErr, "authorization failed, missing scopes %v", m)
 				}

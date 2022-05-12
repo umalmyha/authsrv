@@ -72,9 +72,9 @@ func WithHandler(h http.Handler) configOptionFunc {
 	}
 }
 
-func WithLogger(l *log.Logger) configOptionFunc {
+func WithLogger(logger *log.Logger) configOptionFunc {
 	return func(sc *config) {
-		sc.logger = l
+		sc.logger = logger
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 
 	"github.com/go-redis/redis/v8"
@@ -67,9 +68,29 @@ func JwtConfig() (valueobj.JwtConfig, error) {
 		return cfg, errors.New("private key file is not specified")
 	}
 
-	privateKey, err := os.ReadFile(privateKeyFile)
+	publicKeyFile := os.Getenv("AUTHSRV_JWT_PUBLIC_KEY_FILE")
+	if privateKeyFile == "" {
+		return cfg, errors.New("public key file is not specified")
+	}
+
+	privatePem, err := os.ReadFile(privateKeyFile)
 	if err != nil {
 		return cfg, errors.Wrap(err, "failed to read private key file")
+	}
+
+	publicPem, err := os.ReadFile(publicKeyFile)
+	if err != nil {
+		return cfg, errors.Wrap(err, "failed to read public key file")
+	}
+
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privatePem)
+	if err != nil {
+		return cfg, errors.Wrap(err, "failed to generate private key from PEM")
+	}
+
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicPem)
+	if err != nil {
+		return cfg, errors.Wrap(err, "failed to generate public key from PEM")
 	}
 
 	algorithm := os.Getenv("AUTHSRV_JWT_ALGORITHM")
@@ -81,7 +102,7 @@ func JwtConfig() (valueobj.JwtConfig, error) {
 		return cfg, errors.Wrap(err, "failed to parse jwt ttl in specified format")
 	}
 
-	return valueobj.NewJwtConfig(algorithm, issuer, string(privateKey), ttl)
+	return valueobj.NewJwtConfig(algorithm, issuer, privateKey, publicKey, ttl)
 }
 
 func PasswordConfig() (valueobj.PasswordConfig, error) {
